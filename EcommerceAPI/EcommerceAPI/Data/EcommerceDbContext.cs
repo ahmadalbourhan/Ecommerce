@@ -12,6 +12,11 @@ namespace EcommerceAPI.Data
 
         public DbSet<Product> Products { get; set; }
         public DbSet<Category> Categories { get; set; }
+        public DbSet<User> Users { get; set; }
+        public DbSet<Role> Roles { get; set; }
+        public DbSet<UserRole> UserRoles { get; set; }
+        public DbSet<Permission> Permissions { get; set; }
+        public DbSet<RolePermission> RolePermissions { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -28,22 +33,80 @@ namespace EcommerceAPI.Data
 
                 entity.Property(e => e.Description)
                     .HasMaxLength(500);
+            });
 
-                // Add seed categories
-                entity.HasData(
-                    new Category
-                    {
-                        Id = 1,
-                        Name = "Electronics",
-                        Description = "Electronic devices and gadgets"
-                    },
-                    new Category
-                    {
-                        Id = 2,
-                        Name = "Clothing",
-                        Description = "Apparel and fashion items"
-                    }
-                );
+            // Configure User entity
+            modelBuilder.Entity<User>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Name)
+                    .IsRequired()
+                    .HasMaxLength(255);
+
+                entity.Property(e => e.Username)
+                    .IsRequired()
+                    .HasMaxLength(100);
+
+                entity.Property(e => e.Email)
+                    .IsRequired()
+                    .HasMaxLength(255);
+
+                entity.Property(e => e.Password)
+                    .IsRequired()
+                    .HasMaxLength(255);
+            });
+
+            // Configure Role entity
+            modelBuilder.Entity<Role>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Name)
+                    .IsRequired()
+                    .HasMaxLength(100);
+            });
+
+            // Configure UserRole pivot table
+            modelBuilder.Entity<UserRole>(entity =>
+            {
+                entity.HasKey(e => new { e.UserId, e.RoleId });
+
+                entity.HasOne(ur => ur.User)
+                    .WithMany(u => u.UserRoles)
+                    .HasForeignKey(ur => ur.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(ur => ur.Role)
+                    .WithMany(r => r.UserRoles)
+                    .HasForeignKey(ur => ur.RoleId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Configure Permission entity
+            modelBuilder.Entity<Permission>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Slug)
+                    .IsRequired()
+                    .HasMaxLength(255);
+            });
+
+            // Configure RolePermission pivot table
+            modelBuilder.Entity<RolePermission>(entity =>
+            {
+                entity.HasKey(e => new { e.RoleId, e.PermissionId });
+
+                entity.HasOne(rp => rp.Role)
+                    .WithMany(r => r.RolePermissions)
+                    .HasForeignKey(rp => rp.RoleId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(rp => rp.Permission)
+                    .WithMany(p => p.RolePermissions)
+                    .HasForeignKey(rp => rp.PermissionId)
+                    .OnDelete(DeleteBehavior.Cascade);
             });
 
             // Configure Product entity
@@ -67,43 +130,28 @@ namespace EcommerceAPI.Data
                 entity.Property(e => e.CategoryId)
                     .IsRequired();
 
+                entity.Property(e => e.UserId)
+                    .IsRequired();
+
                 entity.Property(e => e.CreatedAt)
                     .HasDefaultValueSql("GETUTCDATE()");
 
                 entity.Property(e => e.UpdatedAt)
                     .HasDefaultValueSql("GETUTCDATE()");
 
-                // Configure foreign key relationship
+                // Configure foreign key relationships
                 entity.HasOne(p => p.Category)
                     .WithMany(c => c.Products)
                     .HasForeignKey(p => p.CategoryId)
                     .OnDelete(DeleteBehavior.Restrict);
 
-                // Add seed data - only after categories are created
-                entity.HasData(
-                    new Product
-                    {
-                        Id = 1,
-                        CategoryId = 1,
-                        Name = "Laptop",
-                        Cost = 500.00m,
-                        Price = 899.99m,
-                        Image = "laptop.jpg",
-                        CreatedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow
-                    },
-                    new Product
-                    {
-                        Id = 2,
-                        CategoryId = 2,
-                        Name = "T-Shirt",
-                        Cost = 5.00m,
-                        Price = 14.99m,
-                        Image = "tshirt.jpg",
-                        CreatedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow
-                    }
-                );
+                entity.HasOne(p => p.User)
+                    .WithMany(u => u.Products)
+                    .HasForeignKey(p => p.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                // Add index on UserId
+                entity.HasIndex(p => p.UserId);
             });
         }
     }

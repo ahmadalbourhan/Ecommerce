@@ -42,6 +42,12 @@ namespace EcommerceAPI.Services
                 throw new ArgumentException("Category name is required", nameof(category.Name));
             }
 
+            var nameExists = await _categoryRepository.CategoryNameExistsAsync(category.Name);
+            if (nameExists)
+            {
+                throw new ArgumentException($"A category with the name '{category.Name}' already exists", nameof(category.Name));
+            }
+
             return await _categoryRepository.CreateAsync(category);
         }
 
@@ -61,6 +67,16 @@ namespace EcommerceAPI.Services
             if (existingCategory == null)
             {
                 throw new KeyNotFoundException($"Category with ID {category.Id} not found");
+            }
+
+            // Check if the new name is different and if it already exists in another category
+            if (!existingCategory.Name.Equals(category.Name, StringComparison.OrdinalIgnoreCase))
+            {
+                var nameExists = await _categoryRepository.CategoryNameExistsAsync(category.Name);
+                if (nameExists)
+                {
+                    throw new ArgumentException($"A category with the name '{category.Name}' already exists", nameof(category.Name));
+                }
             }
 
             return await _categoryRepository.UpdateAsync(category);

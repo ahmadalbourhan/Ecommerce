@@ -23,6 +23,11 @@ namespace EcommerceAPI.Repositories
             return await _context.Products.FirstOrDefaultAsync(p => p.Id == id);
         }
 
+        public async Task<IEnumerable<Product>> GetByUserIdAsync(int userId)
+        {
+            return await _context.Products.Where(p => p.UserId == userId).ToListAsync();
+        }
+
         public async Task<Product> CreateAsync(Product product)
         {
             _context.Products.Add(product);

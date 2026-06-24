@@ -28,6 +28,15 @@ namespace EcommerceAPI.Services
             return await _productRepository.GetByIdAsync(id);
         }
 
+        public async Task<IEnumerable<Product>> GetProductsByUserIdAsync(int userId)
+        {
+            if (userId <= 0)
+            {
+                throw new ArgumentException("User ID must be greater than 0", nameof(userId));
+            }
+            return await _productRepository.GetByUserIdAsync(userId);
+        }
+
         public async Task<Product> CreateProductAsync(Product product)
         {
             // Validate product name

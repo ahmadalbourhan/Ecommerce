@@ -1,6 +1,22 @@
 
 
-GET https://localhost:7108/category
+
+POST https://localhost:7108/
 Accept: application/json
+Content-Type: application/json
+
+{
+  "name": "Electro"
+}
+
+###
+
+PUT https://localhost:7108/category/6
+Accept: application/json
+Content-Type: application/json
+
+{
+  "name": "Electro"
+}
 
 ###

@@ -19,9 +19,14 @@ namespace EcommerceAPI.Controllers
         }
 
         /// <summary>
-        /// Get all products
+        /// Retrieve all products
         /// </summary>
+        /// <returns>List of all products</returns>
+        /// <response code="200">Returns the list of products</response>
+        /// <response code="500">Internal server error</response>
         [HttpGet]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult<ResponseDto<IEnumerable<Product>>>> GetAll()
         {
             try
@@ -37,9 +42,50 @@ namespace EcommerceAPI.Controllers
         }
 
         /// <summary>
-        /// Get product by ID
+        /// Retrieve products by user ID
         /// </summary>
+        /// <param name="userId">The user ID to filter products</param>
+        /// <returns>List of products for the specified user</returns>
+        /// <response code="200">Returns the list of user's products</response>
+        /// <response code="400">Invalid user ID</response>
+        /// <response code="500">Internal server error</response>
+        [HttpGet("user/{userId}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult<ResponseDto<IEnumerable<Product>>>> GetByUserId(int userId)
+        {
+            try
+            {
+                var products = await _productService.GetProductsByUserIdAsync(userId);
+                return Ok(new ResponseDto<IEnumerable<Product>>(200, "Products retrieved successfully", products));
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(ex, "Invalid argument when retrieving products by user");
+                return BadRequest(new ResponseDto(400, ex.Message, false));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving products by user");
+                return StatusCode(500, new ResponseDto(500, "Internal server error", false));
+            }
+        }
+
+        /// <summary>
+        /// Retrieve a specific product by ID
+        /// </summary>
+        /// <param name="id">The product ID</param>
+        /// <returns>The product with the specified ID</returns>
+        /// <response code="200">Returns the product</response>
+        /// <response code="400">Invalid product ID</response>
+        /// <response code="404">Product not found</response>
+        /// <response code="500">Internal server error</response>
         [HttpGet("{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult<ResponseDto<Product>>> GetById(int id)
         {
             try
@@ -66,7 +112,15 @@ namespace EcommerceAPI.Controllers
         /// <summary>
         /// Create a new product
         /// </summary>
+        /// <param name="product">Product data to create</param>
+        /// <returns>The created product</returns>
+        /// <response code="201">Product created successfully</response>
+        /// <response code="400">Invalid product data or category not found</response>
+        /// <response code="500">Internal server error</response>
         [HttpPost]
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult<ResponseDto<Product>>> Create([FromBody] Product product)
         {
             try
@@ -100,7 +154,17 @@ namespace EcommerceAPI.Controllers
         /// <summary>
         /// Update an existing product
         /// </summary>
+        /// <param name="id">The product ID to update</param>
+        /// <param name="product">Updated product data</param>
+        /// <response code="200">Product updated successfully</response>
+        /// <response code="400">Invalid request or category not found</response>
+        /// <response code="404">Product not found</response>
+        /// <response code="500">Internal server error</response>
         [HttpPut("{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult<ResponseDto<Product>>> Update(int id, [FromBody] Product product)
         {
             try
@@ -143,7 +207,16 @@ namespace EcommerceAPI.Controllers
         /// <summary>
         /// Delete a product
         /// </summary>
+        /// <param name="id">The product ID to delete</param>
+        /// <response code="200">Product deleted successfully</response>
+        /// <response code="400">Invalid product ID</response>
+        /// <response code="404">Product not found</response>
+        /// <response code="500">Internal server error</response>
         [HttpDelete("{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult<ResponseDto>> Delete(int id)
         {
             try

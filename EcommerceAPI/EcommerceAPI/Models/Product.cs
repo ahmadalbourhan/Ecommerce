@@ -4,6 +4,7 @@ namespace EcommerceAPI.Models
     {
         public int Id { get; set; }
         public int CategoryId { get; set; }
+        public int UserId { get; set; }
         public string Name { get; set; } = string.Empty;
         public decimal Cost { get; set; }
         public decimal Price { get; set; }
@@ -11,7 +12,8 @@ namespace EcommerceAPI.Models
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
-        // Navigation property
+        // Navigation properties
         public Category? Category { get; set; }
+        public User? User { get; set; }
     }
 }

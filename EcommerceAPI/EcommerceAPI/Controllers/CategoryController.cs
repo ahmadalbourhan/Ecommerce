@@ -19,9 +19,14 @@ namespace EcommerceAPI.Controllers
         }
 
         /// <summary>
-        /// Get all categories
+        /// Retrieve all categories with their associated products
         /// </summary>
+        /// <returns>List of all categories</returns>
+        /// <response code="200">Returns the list of categories</response>
+        /// <response code="500">Internal server error</response>
         [HttpGet]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult<ResponseDto<IEnumerable<CategoryWithProductsDto>>>> GetAll()
         {
             try
@@ -38,9 +43,19 @@ namespace EcommerceAPI.Controllers
         }
 
         /// <summary>
-        /// Get category by ID
+        /// Retrieve a specific category by ID with its products
         /// </summary>
+        /// <param name="id">The category ID</param>
+        /// <returns>The category with the specified ID and its products</returns>
+        /// <response code="200">Returns the category</response>
+        /// <response code="400">Invalid category ID</response>
+        /// <response code="404">Category not found</response>
+        /// <response code="500">Internal server error</response>
         [HttpGet("{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult<ResponseDto<CategoryWithProductsDto>>> GetById(int id)
         {
             try
@@ -69,15 +84,29 @@ namespace EcommerceAPI.Controllers
         /// <summary>
         /// Create a new category
         /// </summary>
+        /// <param name="createCategoryDto">Category data to create</param>
+        /// <returns>The created category</returns>
+        /// <response code="201">Category created successfully</response>
+        /// <response code="400">Invalid category data</response>
+        /// <response code="500">Internal server error</response>
         [HttpPost]
-        public async Task<ActionResult<ResponseDto<CategoryWithProductsDto>>> Create([FromBody] Category category)
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult<ResponseDto<CategoryWithProductsDto>>> Create([FromBody] CreateCategoryDto createCategoryDto)
         {
             try
             {
-                if (category == null)
+                if (createCategoryDto == null)
                 {
-                    return BadRequest(new ResponseDto(400, "Category cannot be null", false));
+                    return BadRequest(new ResponseDto(400, "Category data cannot be null", false));
                 }
+
+                var category = new Category
+                {
+                    Name = createCategoryDto.Name,
+                    Description = createCategoryDto.Description
+                };
 
                 var createdCategory = await _categoryService.CreateCategoryAsync(category);
                 var createdDto = MapToCategoryWithProductsDto(createdCategory);
@@ -100,20 +129,32 @@ namespace EcommerceAPI.Controllers
         /// <summary>
         /// Update an existing category
         /// </summary>
+        /// <param name="id">The category ID to update</param>
+        /// <param name="updateCategoryDto">Updated category data</param>
+        /// <response code="200">Category updated successfully</response>
+        /// <response code="400">Invalid category data</response>
+        /// <response code="404">Category not found</response>
+        /// <response code="500">Internal server error</response>
         [HttpPut("{id}")]
-        public async Task<ActionResult<ResponseDto<CategoryWithProductsDto>>> Update(int id, [FromBody] Category category)
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult<ResponseDto<CategoryWithProductsDto>>> Update(int id, [FromBody] UpdateCategoryDto updateCategoryDto)
         {
             try
             {
-                if (category == null)
+                if (updateCategoryDto == null)
                 {
-                    return BadRequest(new ResponseDto(400, "Category cannot be null", false));
+                    return BadRequest(new ResponseDto(400, "Category data cannot be null", false));
                 }
 
-                if (id != category.Id)
+                var category = new Category
                 {
-                    return BadRequest(new ResponseDto(400, "Category ID in URL does not match Category ID in body", false));
-                }
+                    Id = id,
+                    Name = updateCategoryDto.Name,
+                    Description = updateCategoryDto.Description
+                };
 
                 var updatedCategory = await _categoryService.UpdateCategoryAsync(category);
                 var updatedDto = MapToCategoryWithProductsDto(updatedCategory);
@@ -139,7 +180,16 @@ namespace EcommerceAPI.Controllers
         /// <summary>
         /// Delete a category
         /// </summary>
+        /// <param name="id">The category ID to delete</param>
+        /// <response code="200">Category deleted successfully</response>
+        /// <response code="400">Invalid category ID</response>
+        /// <response code="404">Category not found</response>
+        /// <response code="500">Internal server error</response>
         [HttpDelete("{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult<ResponseDto>> Delete(int id)
         {
             try

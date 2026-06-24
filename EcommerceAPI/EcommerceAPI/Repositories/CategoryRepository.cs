@@ -1,4 +1,5 @@
 using EcommerceAPI.Data;
+using EcommerceAPI.Data;
 using EcommerceAPI.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -30,6 +31,11 @@ namespace EcommerceAPI.Repositories
             return await _context.Categories.AnyAsync(c => c.Id == id);
         }
 
+        public async Task<bool> CategoryNameExistsAsync(string name)
+        {
+            return await _context.Categories.AnyAsync(c => c.Name.ToLower() == name.ToLower());
+        }
+
         public async Task<Category> CreateAsync(Category category)
         {
             _context.Categories.Add(category);
@@ -39,9 +45,14 @@ namespace EcommerceAPI.Repositories
 
         public async Task<Category> UpdateAsync(Category category)
         {
-            _context.Categories.Update(category);
+            var existingCategory = await _context.Categories.FirstOrDefaultAsync(c => c.Id == category.Id);
+            if (existingCategory != null)
+            {
+                existingCategory.Name = category.Name;
+                existingCategory.Description = category.Description;
+            }
             await _context.SaveChangesAsync();
-            return category;
+            return existingCategory;
         }
 
         public async Task<bool> DeleteAsync(int id)
