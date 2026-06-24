@@ -22,12 +22,13 @@ namespace EcommerceAPI.Controllers
         /// Get all categories
         /// </summary>
         [HttpGet]
-        public async Task<ActionResult<ResponseDto<IEnumerable<Category>>>> GetAll()
+        public async Task<ActionResult<ResponseDto<IEnumerable<CategoryWithProductsDto>>>> GetAll()
         {
             try
             {
                 var categories = await _categoryService.GetAllCategoriesAsync();
-                return Ok(new ResponseDto<IEnumerable<Category>>(200, "Categories retrieved successfully", categories));
+                var categoryDtos = categories.Select(MapToCategoryWithProductsDto);
+                return Ok(new ResponseDto<IEnumerable<CategoryWithProductsDto>>(200, "Categories retrieved successfully", categoryDtos));
             }
             catch (Exception ex)
             {
@@ -40,7 +41,7 @@ namespace EcommerceAPI.Controllers
         /// Get category by ID
         /// </summary>
         [HttpGet("{id}")]
-        public async Task<ActionResult<ResponseDto<Category>>> GetById(int id)
+        public async Task<ActionResult<ResponseDto<CategoryWithProductsDto>>> GetById(int id)
         {
             try
             {
@@ -49,7 +50,9 @@ namespace EcommerceAPI.Controllers
                 {
                     return NotFound(new ResponseDto(404, $"Category with ID {id} not found", false));
                 }
-                return Ok(new ResponseDto<Category>(200, "Category retrieved successfully", category));
+
+                var dto = MapToCategoryWithProductsDto(category);
+                return Ok(new ResponseDto<CategoryWithProductsDto>(200, "Category retrieved successfully", dto));
             }
             catch (ArgumentException ex)
             {
@@ -67,7 +70,7 @@ namespace EcommerceAPI.Controllers
         /// Create a new category
         /// </summary>
         [HttpPost]
-        public async Task<ActionResult<ResponseDto<Category>>> Create([FromBody] Category category)
+        public async Task<ActionResult<ResponseDto<CategoryWithProductsDto>>> Create([FromBody] Category category)
         {
             try
             {
@@ -77,8 +80,10 @@ namespace EcommerceAPI.Controllers
                 }
 
                 var createdCategory = await _categoryService.CreateCategoryAsync(category);
-                return CreatedAtAction(nameof(GetById), new { id = createdCategory.Id }, 
-                    new ResponseDto<Category>(201, "Category created successfully", createdCategory));
+                var createdDto = MapToCategoryWithProductsDto(createdCategory);
+
+                return CreatedAtAction(nameof(GetById), new { id = createdDto.Id }, 
+                    new ResponseDto<CategoryWithProductsDto>(201, "Category created successfully", createdDto));
             }
             catch (ArgumentException ex)
             {
@@ -96,7 +101,7 @@ namespace EcommerceAPI.Controllers
         /// Update an existing category
         /// </summary>
         [HttpPut("{id}")]
-        public async Task<ActionResult<ResponseDto<Category>>> Update(int id, [FromBody] Category category)
+        public async Task<ActionResult<ResponseDto<CategoryWithProductsDto>>> Update(int id, [FromBody] Category category)
         {
             try
             {
@@ -111,7 +116,8 @@ namespace EcommerceAPI.Controllers
                 }
 
                 var updatedCategory = await _categoryService.UpdateCategoryAsync(category);
-                return Ok(new ResponseDto<Category>(200, "Category updated successfully", updatedCategory));
+                var updatedDto = MapToCategoryWithProductsDto(updatedCategory);
+                return Ok(new ResponseDto<CategoryWithProductsDto>(200, "Category updated successfully", updatedDto));
             }
             catch (ArgumentException ex)
             {
@@ -155,6 +161,27 @@ namespace EcommerceAPI.Controllers
                 _logger.LogError(ex, "Error deleting category");
                 return StatusCode(500, new ResponseDto(500, "Internal server error", false));
             }
+        }
+
+        private static CategoryWithProductsDto MapToCategoryWithProductsDto(Category category)
+        {
+            if (category == null) return new CategoryWithProductsDto();
+
+            var dto = new CategoryWithProductsDto
+            {
+                Id = category.Id,
+                Name = category.Name,
+                Description = category.Description,
+                Products = category.Products?.Select(p => new ProductBasicDto
+                {
+                    Id = p.Id,
+                    Name = p.Name,
+                    Price = p.Price,
+                    Image = p.Image
+                }).ToList() ?? new List<ProductBasicDto>()
+            };
+
+            return dto;
         }
     }
 }
