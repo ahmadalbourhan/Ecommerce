@@ -31,6 +31,7 @@ namespace EcommerceAPI.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Description")
+                        .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
@@ -42,20 +43,6 @@ namespace EcommerceAPI.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Categories");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Description = "Electronic devices and gadgets",
-                            Name = "Electronics"
-                        },
-                        new
-                        {
-                            Id = 2,
-                            Description = "Apparel and fashion items",
-                            Name = "Clothing"
-                        });
                 });
 
             modelBuilder.Entity("EcommerceAPI.Models.Permission", b =>
@@ -87,14 +74,14 @@ namespace EcommerceAPI.Migrations
                     b.Property<int>("CategoryId")
                         .HasColumnType("int");
 
+                    b.Property<decimal>("Cost")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasDefaultValueSql("GETUTCDATE()");
-
-                    b.Property<decimal>("Cost")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("Image")
                         .IsRequired()
@@ -125,32 +112,6 @@ namespace EcommerceAPI.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Products");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            CategoryId = 1,
-                            UserId = 1,
-                            Cost = 500.00m,
-                            CreatedAt = new DateTime(2026, 6, 24, 9, 32, 20, 531, DateTimeKind.Utc).AddTicks(2148),
-                            Image = "laptop.jpg",
-                            Name = "Laptop",
-                            Price = 899.99m,
-                            UpdatedAt = new DateTime(2026, 6, 24, 9, 32, 20, 531, DateTimeKind.Utc).AddTicks(2149)
-                        },
-                        new
-                        {
-                            Id = 2,
-                            CategoryId = 2,
-                            UserId = 1,
-                            Cost = 5.00m,
-                            CreatedAt = new DateTime(2026, 6, 24, 9, 32, 20, 531, DateTimeKind.Utc).AddTicks(2154),
-                            Image = "tshirt.jpg",
-                            Name = "T-Shirt",
-                            Price = 14.99m,
-                            UpdatedAt = new DateTime(2026, 6, 24, 9, 32, 20, 531, DateTimeKind.Utc).AddTicks(2155)
-                        });
                 });
 
             modelBuilder.Entity("EcommerceAPI.Models.Role", b =>
@@ -234,59 +195,71 @@ namespace EcommerceAPI.Migrations
                     b.ToTable("UserRoles");
                 });
 
-            modelBuilder.Entity("EcommerceAPI.Models.Category", b =>
+            modelBuilder.Entity("EcommerceAPI.Models.Product", b =>
                 {
-                    b.HasMany("EcommerceAPI.Models.Product")
-                        .WithOne("Category")
-                        .HasForeignKey("EcommerceAPI.Models.Product", "CategoryId")
+                    b.HasOne("EcommerceAPI.Models.Category", "Category")
+                        .WithMany("Products")
+                        .HasForeignKey("CategoryId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("EcommerceAPI.Models.User", "User")
+                        .WithMany("Products")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Category");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("EcommerceAPI.Models.RolePermission", b =>
+                {
+                    b.HasOne("EcommerceAPI.Models.Permission", "Permission")
+                        .WithMany("RolePermissions")
+                        .HasForeignKey("PermissionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EcommerceAPI.Models.Role", "Role")
+                        .WithMany("RolePermissions")
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Permission");
+
+                    b.Navigation("Role");
+                });
+
+            modelBuilder.Entity("EcommerceAPI.Models.UserRole", b =>
+                {
+                    b.HasOne("EcommerceAPI.Models.Role", "Role")
+                        .WithMany("UserRoles")
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EcommerceAPI.Models.User", "User")
+                        .WithMany("UserRoles")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Role");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("EcommerceAPI.Models.Category", b =>
+                {
+                    b.Navigation("Products");
                 });
 
             modelBuilder.Entity("EcommerceAPI.Models.Permission", b =>
                 {
-                    b.HasMany("EcommerceAPI.Models.RolePermission")
-                        .WithOne("Permission")
-                        .HasForeignKey("EcommerceAPI.Models.RolePermission", "PermissionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("EcommerceAPI.Models.Role", b =>
-                {
-                    b.HasMany("EcommerceAPI.Models.RolePermission")
-                        .WithOne("Role")
-                        .HasForeignKey("EcommerceAPI.Models.RolePermission", "RoleId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasMany("EcommerceAPI.Models.UserRole")
-                        .WithOne("Role")
-                        .HasForeignKey("EcommerceAPI.Models.UserRole", "RoleId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("EcommerceAPI.Models.User", b =>
-                {
-                    b.HasMany("EcommerceAPI.Models.Product")
-                        .WithOne("User")
-                        .HasForeignKey("EcommerceAPI.Models.Product", "UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasMany("EcommerceAPI.Models.UserRole")
-                        .WithOne("User")
-                        .HasForeignKey("EcommerceAPI.Models.UserRole", "UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("EcommerceAPI.Models.Product", b =>
-                {
-                    b.Navigation("Category");
-
-                    b.Navigation("User");
+                    b.Navigation("RolePermissions");
                 });
 
             modelBuilder.Entity("EcommerceAPI.Models.Role", b =>
@@ -296,25 +269,11 @@ namespace EcommerceAPI.Migrations
                     b.Navigation("UserRoles");
                 });
 
-            modelBuilder.Entity("EcommerceAPI.Models.RolePermission", b =>
-                {
-                    b.Navigation("Permission");
-
-                    b.Navigation("Role");
-                });
-
             modelBuilder.Entity("EcommerceAPI.Models.User", b =>
                 {
                     b.Navigation("Products");
 
                     b.Navigation("UserRoles");
-                });
-
-            modelBuilder.Entity("EcommerceAPI.Models.UserRole", b =>
-                {
-                    b.Navigation("Role");
-
-                    b.Navigation("User");
                 });
 #pragma warning restore 612, 618
         }

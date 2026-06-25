@@ -24,4 +24,8 @@
     <None Include="C:\Users\user\source\repos\Ecommerce\EcommerceAPI\EcommerceAPI\.editorconfig" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Migrations\" />
+  </ItemGroup>
+
 </Project>
