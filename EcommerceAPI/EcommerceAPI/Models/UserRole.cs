@@ -1,10 +1,10 @@
+using Microsoft.AspNetCore.Identity;
+
 namespace EcommerceAPI.Models
 {
-    public class UserRole
+    // Inherit from IdentityUserRole<int> so Identity and the custom model share the same join type
+    public class UserRole : IdentityUserRole<int>
     {
-        public int UserId { get; set; }
-        public int RoleId { get; set; }
-
         // Navigation properties
         public User User { get; set; } = null!;
         public Role Role { get; set; } = null!;

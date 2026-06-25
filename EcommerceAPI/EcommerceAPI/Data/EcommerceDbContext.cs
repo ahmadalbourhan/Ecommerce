@@ -1,9 +1,12 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using EcommerceAPI.Models;
 
 namespace EcommerceAPI.Data
 {
-    public class EcommerceDbContext : DbContext
+    // Use IdentityDbContext so we can leverage ASP.NET Identity (UserManager/RoleManager/etc.)
+    public class EcommerceDbContext : IdentityDbContext<User, Role, int>
     {
         public EcommerceDbContext(DbContextOptions<EcommerceDbContext> options)
             : base(options)
@@ -12,20 +15,30 @@ namespace EcommerceAPI.Data
 
         public DbSet<Product> Products { get; set; }
         public DbSet<Category> Categories { get; set; }
-        public DbSet<User> Users { get; set; }
-        public DbSet<Role> Roles { get; set; }
         public DbSet<UserRole> UserRoles { get; set; }
         public DbSet<Permission> Permissions { get; set; }
         public DbSet<RolePermission> RolePermissions { get; set; }
         public DbSet<UserPermission> UserPermissions { get; set; }
+        public DbSet<RefreshToken> RefreshTokens { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
+            // Map Identity tables to custom table names (singular, lowercase)
+            modelBuilder.Entity<User>(b => { b.ToTable("user"); });
+            modelBuilder.Entity<Role>(b => { b.ToTable("role"); });
+            modelBuilder.Entity<IdentityUserRole<int>>(b => { b.ToTable("role_user"); b.HasKey(r => new { r.UserId, r.RoleId }); });
+            modelBuilder.Entity<IdentityUserClaim<int>>(b => { b.ToTable("user_claim"); });
+            modelBuilder.Entity<IdentityUserLogin<int>>(b => { b.ToTable("user_login"); });
+            modelBuilder.Entity<IdentityRoleClaim<int>>(b => { b.ToTable("role_claim"); });
+            modelBuilder.Entity<IdentityUserToken<int>>(b => { b.ToTable("user_token"); });
+
             // Configure Category entity
             modelBuilder.Entity<Category>(entity =>
             {
+                entity.ToTable("category");
+
                 entity.HasKey(e => e.Id);
 
                 entity.Property(e => e.Name)
@@ -36,42 +49,10 @@ namespace EcommerceAPI.Data
                     .HasMaxLength(500);
             });
 
-            // Configure User entity
-            modelBuilder.Entity<User>(entity =>
-            {
-                entity.HasKey(e => e.Id);
-
-                entity.Property(e => e.Name)
-                    .IsRequired()
-                    .HasMaxLength(255);
-
-                entity.Property(e => e.Username)
-                    .IsRequired()
-                    .HasMaxLength(100);
-
-                entity.Property(e => e.Email)
-                    .IsRequired()
-                    .HasMaxLength(255);
-
-                entity.Property(e => e.Password)
-                    .IsRequired()
-                    .HasMaxLength(255);
-            });
-
-            // Configure Role entity
-            modelBuilder.Entity<Role>(entity =>
-            {
-                entity.HasKey(e => e.Id);
-
-                entity.Property(e => e.Name)
-                    .IsRequired()
-                    .HasMaxLength(100);
-            });
-
-            // Configure UserRole pivot table
+            // Configure UserRole pivot table navigation (do not configure key on derived type)
             modelBuilder.Entity<UserRole>(entity =>
             {
-                entity.HasKey(e => new { e.UserId, e.RoleId });
+                entity.ToTable("role_user");
 
                 entity.HasOne(ur => ur.User)
                     .WithMany(u => u.UserRoles)
@@ -87,6 +68,7 @@ namespace EcommerceAPI.Data
             // Configure Permission entity
             modelBuilder.Entity<Permission>(entity =>
             {
+                entity.ToTable("permission");
                 entity.HasKey(e => e.Id);
 
                 entity.Property(e => e.Slug)
@@ -97,6 +79,7 @@ namespace EcommerceAPI.Data
             // Configure RolePermission pivot table
             modelBuilder.Entity<RolePermission>(entity =>
             {
+                entity.ToTable("role_permission");
                 entity.HasKey(e => new { e.RoleId, e.PermissionId });
 
                 entity.HasOne(rp => rp.Role)
@@ -113,6 +96,7 @@ namespace EcommerceAPI.Data
             // Configure UserPermission pivot table
             modelBuilder.Entity<UserPermission>(entity =>
             {
+                entity.ToTable("user_permission");
                 entity.HasKey(e => new { e.UserId, e.PermissionId });
 
                 entity.HasOne(up => up.User)
@@ -129,6 +113,7 @@ namespace EcommerceAPI.Data
             // Configure Product entity
             modelBuilder.Entity<Product>(entity =>
             {
+                entity.ToTable("product");
                 entity.HasKey(e => e.Id);
 
                 entity.Property(e => e.Name)
@@ -169,6 +154,15 @@ namespace EcommerceAPI.Data
 
                 // Add index on UserId
                 entity.HasIndex(p => p.UserId);
+            });
+
+            // Configure RefreshToken table name
+            modelBuilder.Entity<RefreshToken>(entity =>
+            {
+                entity.ToTable("refresh_token");
+                entity.HasKey(e => e.Id);
+
+                entity.HasIndex("UserId");
             });
         }
     }

@@ -29,16 +29,20 @@ namespace EcommerceAPI.Seeders
         {
             try
             {
+                // Apply migrations if any
                 await _context.Database.MigrateAsync();
 
-                // Seed roles
+                // Seed roles (custom Roles table)
                 await SeedRolesAsync();
 
-                // Seed default SuperAdmin user
-                await SeedDefaultSuperAdminAsync();
+                // Seed permissions (custom Permissions table)
+                await SeedPermissionsAsync();
 
-                // Assign all permissions to SuperAdmin role
+                // Assign all permissions to SuperAdmin role using RolePermissions pivot
                 await AssignPermissionsToSuperAdminAsync();
+
+                // Ensure a default SuperAdmin user exists and is assigned the SuperAdmin role
+                await SeedDefaultSuperAdminAsync();
 
                 _logger.LogInformation("Database seeding completed successfully");
             }
@@ -55,91 +59,137 @@ namespace EcommerceAPI.Seeders
 
             foreach (var roleName in roles)
             {
-                var roleExists = await _roleManager.RoleExistsAsync(roleName);
-                if (!roleExists)
+                var exists = await _context.Roles.AnyAsync(r => r.Name == roleName);
+                if (!exists)
                 {
+                    // Use RoleManager to ensure Identity tables are populated correctly
                     var role = new Role { Name = roleName };
-                    var result = await _roleManager.CreateAsync(role);
-                    if (result.Succeeded)
-                    {
-                        _logger.LogInformation($"Role '{roleName}' created successfully");
-                    }
-                    else
-                    {
-                        _logger.LogError($"Failed to create role '{roleName}': {string.Join(", ", result.Errors.Select(e => e.Description))}");
-                    }
+                    await _roleManager.CreateAsync(role);
                 }
             }
+
+            // Save if any new roles were added to the custom Role table
+            await _context.SaveChangesAsync();
         }
 
         private async Task SeedDefaultSuperAdminAsync()
         {
-            var superAdminEmail = "superadmin@app.com";
-            var existingUser = await _userManager.FindByEmailAsync(superAdminEmail);
+            // Default credentials (change them after first run)
+            const string adminEmail = "superadmin@example.com";
+            const string adminUserName = "superadmin";
+            const string adminFullName = "Super Administrator";
+            const string adminPassword = "ChangeMe123!"; // meets current password policy
 
-            if (existingUser != null)
+            // Ensure role exists
+            var roleExists = await _roleManager.RoleExistsAsync("SuperAdmin");
+            if (!roleExists)
             {
-                _logger.LogInformation("Default SuperAdmin user already exists");
+                _logger.LogWarning("SuperAdmin role does not exist when trying to create default user. Creating role.");
+                await _roleManager.CreateAsync(new Role { Name = "SuperAdmin" });
+            }
+
+            var existing = await _userManager.FindByEmailAsync(adminEmail);
+            if (existing != null)
+            {
+                // Ensure the user is in the SuperAdmin role
+                if (!await _userManager.IsInRoleAsync(existing, "SuperAdmin"))
+                {
+                    await _userManager.AddToRoleAsync(existing, "SuperAdmin");
+                }
+
+                _logger.LogInformation("SuperAdmin user already exists, skipping creation.");
                 return;
             }
 
-            var superAdminUser = new User
+            var user = new User
             {
-                UserName = superAdminEmail,
-                Email = superAdminEmail,
-                FullName = "Super Administrator",
+                UserName = adminUserName,
+                Email = adminEmail,
+                FullName = adminFullName,
+                EmailConfirmed = true,
                 IsActive = true,
-                CreatedAt = DateTime.UtcNow,
-                EmailConfirmed = true
+                CreatedAt = DateTime.UtcNow
             };
 
-            var result = await _userManager.CreateAsync(superAdminUser, "SuperAdmin@123");
-            if (result.Succeeded)
+            var createResult = await _userManager.CreateAsync(user, adminPassword);
+            if (!createResult.Succeeded)
             {
-                await _userManager.AddToRoleAsync(superAdminUser, "SuperAdmin");
-                _logger.LogInformation("Default SuperAdmin user created successfully");
+                _logger.LogError("Failed to create SuperAdmin user: {errors}", string.Join(';', createResult.Errors.Select(e => e.Description)));
+                return;
             }
-            else
+
+            var addRoleResult = await _userManager.AddToRoleAsync(user, "SuperAdmin");
+            if (!addRoleResult.Succeeded)
             {
-                _logger.LogError($"Failed to create SuperAdmin user: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+                _logger.LogError("Failed to assign SuperAdmin role to user: {errors}", string.Join(';', addRoleResult.Errors.Select(e => e.Description)));
+                return;
             }
+
+            _logger.LogInformation("Created default SuperAdmin user: {email}", adminEmail);
+        }
+
+        private async Task SeedPermissionsAsync()
+        {
+            // Seed permission slugs into the custom Permissions table if they don't exist
+            var allPermissions = Permissions.GetAllPermissions();
+
+            var existingSlugs = await _context.Permissions
+                .Select(p => p.Slug)
+                .ToListAsync();
+
+            var toAdd = allPermissions.Except(existingSlugs).ToList();
+            if (!toAdd.Any())
+            {
+                _logger.LogInformation("Permissions already seeded, skipping");
+                return;
+            }
+
+            foreach (var slug in toAdd)
+            {
+                _context.Permissions.Add(new Permission { Slug = slug });
+            }
+
+            await _context.SaveChangesAsync();
+            _logger.LogInformation($"Seeded {toAdd.Count} permissions");
         }
 
         private async Task AssignPermissionsToSuperAdminAsync()
         {
-            var superAdminRole = await _roleManager.FindByNameAsync("SuperAdmin");
+            var superAdminRole = await _context.Roles
+                .Include(r => r.RolePermissions)
+                .FirstOrDefaultAsync(r => r.Name == "SuperAdmin");
+
             if (superAdminRole == null)
             {
                 _logger.LogWarning("SuperAdmin role not found");
                 return;
             }
 
-            var existingClaims = await _context.RoleClaims
-                .Where(rc => rc.RoleId == superAdminRole.Id && rc.ClaimType == "permission")
-                .ToListAsync();
+            // Get existing permission slugs assigned to role via RolePermissions
+            var existingPermissionIds = superAdminRole.RolePermissions.Select(rp => rp.PermissionId).ToHashSet();
 
-            if (existingClaims.Any())
-            {
-                _logger.LogInformation("SuperAdmin role already has permissions assigned");
-                return;
-            }
+            var allPermissions = await _context.Permissions.ToListAsync();
 
-            var allPermissions = Permissions.GetAllPermissions();
-
+            var added = 0;
             foreach (var permission in allPermissions)
             {
-                var claim = new IdentityRoleClaim<int>
+                if (!existingPermissionIds.Contains(permission.Id))
                 {
-                    RoleId = superAdminRole.Id,
-                    ClaimType = "permission",
-                    ClaimValue = permission
-                };
-
-                _context.RoleClaims.Add(claim);
+                    _context.RolePermissions.Add(new RolePermission
+                    {
+                        RoleId = superAdminRole.Id,
+                        PermissionId = permission.Id
+                    });
+                    added++;
+                }
             }
 
-            await _context.SaveChangesAsync();
-            _logger.LogInformation($"Assigned {allPermissions.Length} permissions to SuperAdmin role");
+            if (added > 0)
+            {
+                await _context.SaveChangesAsync();
+            }
+
+            _logger.LogInformation($"Assigned {added} permissions to SuperAdmin role");
         }
     }
 }

@@ -10,13 +10,14 @@ namespace EcommerceAPI.Controllers.Examples
     /// </summary>
     [ApiController]
     [Route("api/[controller]")]
+    [ApiExplorerSettings(IgnoreApi = true)]
     public class PermissionExampleController : ControllerBase
     {
         /// <summary>
         /// Example: Create a product (requires Product.Create permission)
         /// </summary>
         [HttpPost("products")]
-        [HasPermission(Permissions.Product.Create)]
+        [HasPermission(Permissions.Products.Create)]
         public IActionResult CreateProduct()
         {
             return Ok(new { message = "Product created successfully" });
@@ -26,7 +27,7 @@ namespace EcommerceAPI.Controllers.Examples
         /// Example: Read all products (requires Product.Read permission)
         /// </summary>
         [HttpGet("products")]
-        [HasPermission(Permissions.Product.Read)]
+        [HasPermission(Permissions.Products.Read)]
         public IActionResult GetAllProducts()
         {
             return Ok(new { message = "Products retrieved successfully" });
@@ -36,7 +37,7 @@ namespace EcommerceAPI.Controllers.Examples
         /// Example: Update a product (requires Product.Update permission)
         /// </summary>
         [HttpPut("products/{id}")]
-        [HasPermission(Permissions.Product.Update)]
+        [HasPermission(Permissions.Products.Update)]
         public IActionResult UpdateProduct(int id)
         {
             return Ok(new { message = "Product updated successfully" });
@@ -46,7 +47,7 @@ namespace EcommerceAPI.Controllers.Examples
         /// Example: Delete a product (requires Product.Delete permission)
         /// </summary>
         [HttpDelete("products/{id}")]
-        [HasPermission(Permissions.Product.Delete)]
+        [HasPermission(Permissions.Products.Delete)]
         public IActionResult DeleteProduct(int id)
         {
             return Ok(new { message = "Product deleted successfully" });
@@ -56,7 +57,7 @@ namespace EcommerceAPI.Controllers.Examples
         /// Example: Create a category (requires Category.Create permission)
         /// </summary>
         [HttpPost("categories")]
-        [HasPermission(Permissions.Category.Create)]
+        [HasPermission(Permissions.Categories.Create)]
         public IActionResult CreateCategory()
         {
             return Ok(new { message = "Category created successfully" });
@@ -67,7 +68,7 @@ namespace EcommerceAPI.Controllers.Examples
         /// This demonstrates how to use multiple permissions or protect sensitive operations
         /// </summary>
         [HttpPost("admin/assign-permissions")]
-        [HasPermission(Permissions.Permission.Assign)]
+        [HasPermission(Permissions.AdminManagement.ManagePermissions)]
         public IActionResult AssignPermissionsToUser()
         {
             return Ok(new { message = "Permissions assigned successfully" });
@@ -78,8 +79,8 @@ namespace EcommerceAPI.Controllers.Examples
         /// This endpoint would require EITHER permission to be granted.
         /// </summary>
         [HttpGet("reports")]
-        [HasPermission(Permissions.Product.Read)]
-        [HasPermission(Permissions.Category.Read)]
+        [HasPermission(Permissions.Products.Read)]
+        [HasPermission(Permissions.Categories.Read)]
         public IActionResult GetReports()
         {
             return Ok(new { message = "Reports retrieved successfully" });

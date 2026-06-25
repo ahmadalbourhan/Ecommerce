@@ -1,29 +1,12 @@
 using EcommerceAPI.Constants;
 using EcommerceAPI.Data;
 using EcommerceAPI.Models;
+using EcommerceAPI.Repositories;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 namespace EcommerceAPI.Services
 {
-    public interface IPermissionService
-    {
-        // Existing methods
-        Task<IEnumerable<Permission>> GetAllAsync();
-        Task<Permission?> GetByIdAsync(int id);
-        Task<Permission> CreateAsync(Permission permission);
-        Task<Permission> UpdateAsync(Permission permission);
-        Task<bool> DeleteAsync(int id);
-
-        // New permission management methods
-        Task<List<string>> GetUserPermissionsAsync(int userId);
-        Task<List<string>> GetRolePermissionsAsync(int roleId);
-        Task<bool> HasPermissionAsync(int userId, string permission);
-        Task<bool> AssignPermissionToUserAsync(int userId, string permissionSlug);
-        Task<bool> RevokePermissionFromUserAsync(int userId, string permissionSlug);
-        Task<List<string>> GetAvailablePermissionsAsync();
-        Task<List<string>> GetUnassignedPermissionsAsync(int userId);
-    }
-
     public class PermissionService : IPermissionService
     {
         private readonly IPermissionRepository _permissionRepository;
@@ -77,13 +60,40 @@ namespace EcommerceAPI.Services
 
         /// <summary>
         /// Gets all permissions for a user (from role claims and user claims).
+        /// SuperAdmin users automatically get all permissions.
         /// </summary>
         public async Task<List<string>> GetUserPermissionsAsync(int userId)
         {
             var permissions = new HashSet<string>();
 
-            // For now, get permissions from IdentityUserClaims when role is SuperAdmin
-            // This will be populated by the seeder
+            // IMPORTANT:
+            // Roles are assigned via ASP.NET Identity (UserManager.AddToRoleAsync), which writes to the Identity join table.
+            // Do not rely on custom navigation properties here; query Identity tables directly for correctness.
+            var roleIds = await _context.Set<IdentityUserRole<int>>()
+                .Where(ur => ur.UserId == userId)
+                .Select(ur => ur.RoleId)
+                .ToListAsync();
+
+            var roleNames = await _context.Roles
+                .Where(r => roleIds.Contains(r.Id))
+                .Select(r => r.Name)
+                .ToListAsync();
+
+            _logger.LogInformation($"User {userId} has {roleNames.Count} role(s): {string.Join(", ", roleNames.Where(r => !string.IsNullOrWhiteSpace(r)))}");
+
+            var isSuperAdmin = roleNames.Any(r => string.Equals(r, "SuperAdmin", StringComparison.OrdinalIgnoreCase));
+
+            if (isSuperAdmin)
+            {
+                _logger.LogInformation($"User {userId} is SuperAdmin - granting all permissions");
+                // SuperAdmin gets all available permissions
+                var allPerms = Permissions.GetAllPermissions().ToList();
+                _logger.LogInformation($"Returning {allPerms.Count} permissions for SuperAdmin");
+                return allPerms;
+            }
+
+            _logger.LogInformation($"User {userId} is not SuperAdmin - checking other permission sources");
+
             var userClaims = await _context.UserClaims
                 .Where(uc => uc.UserId == userId && uc.ClaimType == "permission")
                 .Select(uc => uc.ClaimValue)
@@ -95,15 +105,12 @@ namespace EcommerceAPI.Services
                     permissions.Add(permission);
             }
 
-            // Also check role-based permissions (SuperAdmin gets all)
-            var userRoles = await _context.UserRoles
-                .Where(ur => ur.UserId == userId)
-                .ToListAsync();
-
-            foreach (var userRole in userRoles)
+            // Check role-based permissions
+            if (roleIds.Count > 0)
             {
+                // role claims (IdentityRoleClaim entries)
                 var roleClaims = await _context.RoleClaims
-                    .Where(rc => rc.RoleId == userRole.RoleId && rc.ClaimType == "permission")
+                    .Where(rc => roleIds.Contains(rc.RoleId) && rc.ClaimType == "permission")
                     .Select(rc => rc.ClaimValue)
                     .ToListAsync();
 
@@ -111,6 +118,19 @@ namespace EcommerceAPI.Services
                 {
                     if (!string.IsNullOrEmpty(roleClaim))
                         permissions.Add(roleClaim);
+                }
+
+                // role permissions (custom RolePermission pivot with Permission.Slug)
+                var rolePermissions = await _context.RolePermissions
+                    .Where(rp => roleIds.Contains(rp.RoleId))
+                    .Include(rp => rp.Permission)
+                    .Select(rp => rp.Permission.Slug)
+                    .ToListAsync();
+
+                foreach (var rpSlug in rolePermissions)
+                {
+                    if (!string.IsNullOrEmpty(rpSlug))
+                        permissions.Add(rpSlug);
                 }
             }
 
@@ -122,9 +142,11 @@ namespace EcommerceAPI.Services
 
             foreach (var userPermission in userPermissions)
             {
-                permissions.Add(userPermission.Permission.Slug);
+                if (userPermission?.Permission != null && !string.IsNullOrEmpty(userPermission.Permission.Slug))
+                    permissions.Add(userPermission.Permission.Slug);
             }
 
+            _logger.LogInformation($"User {userId} final permissions count: {permissions.Count}");
             return permissions.ToList();
         }
 
@@ -136,6 +158,8 @@ namespace EcommerceAPI.Services
             return await _context.RoleClaims
                 .Where(rc => rc.RoleId == roleId && rc.ClaimType == "permission")
                 .Select(rc => rc.ClaimValue)
+                .Where(v => !string.IsNullOrEmpty(v))
+                .Select(v => v!)
                 .ToListAsync();
         }
 
@@ -166,7 +190,7 @@ namespace EcommerceAPI.Services
                 }
 
                 // Add permission claim
-                var userClaim = new IdentityUserClaim<int>
+                var userClaim = new Microsoft.AspNetCore.Identity.IdentityUserClaim<int>
                 {
                     UserId = userId,
                     ClaimType = "permission",
