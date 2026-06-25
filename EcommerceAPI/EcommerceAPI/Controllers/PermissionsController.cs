@@ -1,5 +1,6 @@
 using EcommerceAPI.Models;
 using EcommerceAPI.Services;
+using EcommerceAPI.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EcommerceAPI.Controllers
@@ -104,5 +105,94 @@ namespace EcommerceAPI.Controllers
             }
             return NoContent();
         }
+
+        /// <summary>
+        /// Get all available permissions in the system
+        /// </summary>
+        /// <response code="200">Returns list of all available permission slugs</response>
+        [HttpGet("available/all")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        public async Task<ActionResult<List<string>>> GetAvailablePermissions()
+        {
+            var permissions = await _permissionService.GetAvailablePermissionsAsync();
+            return Ok(permissions);
+        }
+
+        /// <summary>
+        /// Get permissions for a specific user
+        /// </summary>
+        /// <param name="userId">The user ID</param>
+        /// <response code="200">Returns list of user's permissions</response>
+        [HttpGet("users/{userId}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        public async Task<ActionResult<List<string>>> GetUserPermissions(int userId)
+        {
+            var permissions = await _permissionService.GetUserPermissionsAsync(userId);
+            return Ok(permissions);
+        }
+
+        /// <summary>
+        /// Get unassigned permissions for a specific user
+        /// </summary>
+        /// <param name="userId">The user ID</param>
+        /// <response code="200">Returns list of unassigned permissions</response>
+        [HttpGet("users/{userId}/unassigned")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        public async Task<ActionResult<List<string>>> GetUnassignedPermissions(int userId)
+        {
+            var permissions = await _permissionService.GetUnassignedPermissionsAsync(userId);
+            return Ok(permissions);
+        }
+
+        /// <summary>
+        /// Assign a permission to a user (SuperAdmin only)
+        /// </summary>
+        /// <param name="userId">The user ID (must be Admin role)</param>
+        /// <param name="request">Permission slug to assign</param>
+        /// <response code="200">Permission assigned successfully</response>
+        /// <response code="400">Invalid request or user is not Admin</response>
+        /// <response code="404">User or permission not found</response>
+        [HttpPost("users/{userId}/assign")]
+        [HasPermission("Permission.Assign")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> AssignPermissionToUser(int userId, [FromBody] AssignPermissionRequest request)
+        {
+            var result = await _permissionService.AssignPermissionToUserAsync(userId, request.PermissionSlug);
+            if (!result)
+            {
+                return BadRequest("Failed to assign permission. Ensure the user is an Admin and the permission exists.");
+            }
+            return Ok(new { message = $"Permission '{request.PermissionSlug}' assigned successfully." });
+        }
+
+        /// <summary>
+        /// Revoke a permission from a user (SuperAdmin only)
+        /// </summary>
+        /// <param name="userId">The user ID</param>
+        /// <param name="request">Permission slug to revoke</param>
+        /// <response code="200">Permission revoked successfully</response>
+        /// <response code="400">Invalid request</response>
+        /// <response code="404">User or permission not found</response>
+        [HttpPost("users/{userId}/revoke")]
+        [HasPermission("Permission.Revoke")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> RevokePermissionFromUser(int userId, [FromBody] AssignPermissionRequest request)
+        {
+            var result = await _permissionService.RevokePermissionFromUserAsync(userId, request.PermissionSlug);
+            if (!result)
+            {
+                return BadRequest("Failed to revoke permission.");
+            }
+            return Ok(new { message = $"Permission '{request.PermissionSlug}' revoked successfully." });
+        }
+    }
+
+    public class AssignPermissionRequest
+    {
+        public string PermissionSlug { get; set; } = string.Empty;
     }
 }

@@ -1,0 +1,81 @@
+// This is an EXAMPLE migration file showing what will be created
+// when you run: Add-Migration AddUserPermissionTable
+// 
+// You may not need to create this manually if you're using Code-First
+// with automatic migrations, but here's what it would look like:
+
+using Microsoft.EntityFrameworkCore.Migrations;
+
+#nullable disable
+
+namespace EcommerceAPI.Migrations
+{
+    /// <inheritdoc />
+    public partial class AddUserPermissionTable : Migration
+    {
+        /// <inheritdoc />
+        protected override void Up(MigrationBuilder migrationBuilder)
+        {
+            // Create the UserPermission table
+            migrationBuilder.CreateTable(
+                name: "UserPermissions",
+                columns: table => new
+                {
+                    UserId = table.Column<int>(type: "int", nullable: false),
+                    PermissionId = table.Column<int>(type: "int", nullable: false),
+                    Id = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_UserPermissions", x => new { x.UserId, x.PermissionId });
+                    table.ForeignKey(
+                        name: "FK_UserPermissions_Permissions_PermissionId",
+                        column: x => x.PermissionId,
+                        principalTable: "Permissions",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_UserPermissions_Users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            // Create index on PermissionId
+            migrationBuilder.CreateIndex(
+                name: "IX_UserPermissions_PermissionId",
+                table: "UserPermissions",
+                column: "PermissionId");
+        }
+
+        /// <inheritdoc />
+        protected override void Down(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.DropTable(
+                name: "UserPermissions");
+        }
+    }
+}
+
+/*
+ * TO RUN THIS MIGRATION:
+ * 
+ * In Package Manager Console:
+ * Add-Migration AddUserPermissionTable
+ * Update-Database
+ * 
+ * OR via dotnet CLI:
+ * dotnet ef migrations add AddUserPermissionTable
+ * dotnet ef database update
+ * 
+ * WHAT THIS MIGRATION DOES:
+ * 1. Creates UserPermissions table with composite primary key (UserId, PermissionId)
+ * 2. Creates foreign keys to User and Permission tables
+ * 3. Enables cascade delete for both relationships
+ * 4. Creates an index on PermissionId for query performance
+ * 
+ * AFTER MIGRATION:
+ * - The DataSeeder will automatically populate initial data
+ * - Restart your application to run the seeder
+ */

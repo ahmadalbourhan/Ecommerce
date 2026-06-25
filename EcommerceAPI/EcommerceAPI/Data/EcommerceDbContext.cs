@@ -17,6 +17,7 @@ namespace EcommerceAPI.Data
         public DbSet<UserRole> UserRoles { get; set; }
         public DbSet<Permission> Permissions { get; set; }
         public DbSet<RolePermission> RolePermissions { get; set; }
+        public DbSet<UserPermission> UserPermissions { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -106,6 +107,22 @@ namespace EcommerceAPI.Data
                 entity.HasOne(rp => rp.Permission)
                     .WithMany(p => p.RolePermissions)
                     .HasForeignKey(rp => rp.PermissionId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Configure UserPermission pivot table
+            modelBuilder.Entity<UserPermission>(entity =>
+            {
+                entity.HasKey(e => new { e.UserId, e.PermissionId });
+
+                entity.HasOne(up => up.User)
+                    .WithMany(u => u.UserPermissions)
+                    .HasForeignKey(up => up.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(up => up.Permission)
+                    .WithMany(p => p.UserPermissions)
+                    .HasForeignKey(up => up.PermissionId)
                     .OnDelete(DeleteBehavior.Cascade);
             });
 

@@ -1,6 +1,8 @@
 using EcommerceAPI.Data;
 using EcommerceAPI.Repositories;
 using EcommerceAPI.Services;
+using EcommerceAPI.Seeders;
+using EcommerceAPI.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 
@@ -8,7 +10,11 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
-builder.Services.AddControllers();
+builder.Services.AddControllers(options =>
+{
+    // Add the permission authorization filter globally
+    options.Filters.Add<PermissionAuthorizationFilter>();
+});
 
 // Add Swagger/OpenAPI
 builder.Services.AddEndpointsApiExplorer();
@@ -45,7 +51,17 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IRoleService, RoleService>();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
 
+// Register DataSeeder
+builder.Services.AddScoped<DataSeeder>();
+
 var app = builder.Build();
+
+// Run database seeding on startup
+using (var scope = app.Services.CreateScope())
+{
+    var seeder = scope.ServiceProvider.GetRequiredService<DataSeeder>();
+    await seeder.SeedAsync();
+}
 
 // Configure the HTTP request pipeline.
 // Enable static files (required for Swagger UI assets)

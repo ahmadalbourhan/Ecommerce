@@ -11,5 +11,6 @@ namespace EcommerceAPI.Models
         // Navigation properties
         public ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
         public ICollection<Product> Products { get; set; } = new List<Product>();
+        public ICollection<UserPermission> UserPermissions { get; set; } = new List<UserPermission>();
     }
 }
