@@ -15,31 +15,51 @@ namespace EcommerceAPI.Repositories
 
         public async Task<IEnumerable<Product>> GetAllAsync()
         {
-            return await _context.Products.ToListAsync();
+            return await _context.Products
+                .Include(p => p.Category)
+                .Include(p => p.User)
+                .ToListAsync();
         }
 
         public async Task<Product?> GetByIdAsync(int id)
         {
-            return await _context.Products.FirstOrDefaultAsync(p => p.Id == id);
+            return await _context.Products
+                .Include(p => p.Category)
+                .Include(p => p.User)
+                .FirstOrDefaultAsync(p => p.Id == id);
         }
 
         public async Task<IEnumerable<Product>> GetByUserIdAsync(int userId)
         {
-            return await _context.Products.Where(p => p.UserId == userId).ToListAsync();
+            return await _context.Products
+                .Where(p => p.UserId == userId)
+                .Include(p => p.Category)
+                .Include(p => p.User)
+                .ToListAsync();
         }
 
         public async Task<Product> CreateAsync(Product product)
         {
             _context.Products.Add(product);
             await _context.SaveChangesAsync();
-            return product;
+
+            // Return product with navigation properties loaded
+            return await _context.Products
+                .Include(p => p.Category)
+                .Include(p => p.User)
+                .FirstAsync(p => p.Id == product.Id);
         }
 
         public async Task<Product> UpdateAsync(Product product)
         {
             _context.Products.Update(product);
             await _context.SaveChangesAsync();
-            return product;
+
+            // Return updated product with navigation properties loaded
+            return await _context.Products
+                .Include(p => p.Category)
+                .Include(p => p.User)
+                .FirstAsync(p => p.Id == product.Id);
         }
 
         public async Task<bool> DeleteAsync(int id)

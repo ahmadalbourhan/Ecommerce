@@ -48,7 +48,7 @@ namespace EcommerceAPI.Controllers
         /// <summary>
         /// Retrieve a specific category by ID with its products
         /// </summary>
-        /// <param name="id">The category ID</param>
+        /// <param name="id">The unique identifier of the category to retrieve</param>
         /// <returns>The category with the specified ID and its products</returns>
         /// <response code="200">Returns the category</response>
         /// <response code="400">Invalid category ID</response>
@@ -134,7 +134,7 @@ namespace EcommerceAPI.Controllers
         /// <summary>
         /// Update an existing category
         /// </summary>
-        /// <param name="id">The category ID to update</param>
+        /// <param name="id">The unique identifier of the category to update</param>
         /// <param name="updateCategoryDto">Updated category data</param>
         /// <response code="200">Category updated successfully</response>
         /// <response code="400">Invalid category data</response>
@@ -186,14 +186,14 @@ namespace EcommerceAPI.Controllers
         /// <summary>
         /// Delete a category
         /// </summary>
-        /// <param name="id">The category ID to delete</param>
-        /// <response code="200">Category deleted successfully</response>
+        /// <param name="id">The unique identifier of the category to delete</param>
+        /// <response code="204">Category deleted successfully</response>
         /// <response code="400">Invalid category ID</response>
         /// <response code="404">Category not found</response>
         /// <response code="500">Internal server error</response>
         [HttpDelete("{id}")]
         [HasPermission(Permissions.Categories.Delete)]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
@@ -206,7 +206,7 @@ namespace EcommerceAPI.Controllers
                 {
                     return NotFound(new ResponseDto(404, $"Category with ID {id} not found", false));
                 }
-                return Ok(new ResponseDto(200, $"Category with ID {id} deleted successfully"));
+                return NoContent();
             }
             catch (ArgumentException ex)
             {

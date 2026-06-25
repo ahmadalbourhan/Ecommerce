@@ -35,7 +35,7 @@ namespace EcommerceAPI.Controllers
         /// <summary>
         /// Retrieve a specific role by ID
         /// </summary>
-        /// <param name="id">The role ID</param>
+        /// <param name="id">The unique identifier of the role to retrieve</param>
         /// <returns>The role with the specified ID</returns>
         /// <response code="200">Returns the role</response>
         /// <response code="404">Role not found</response>
@@ -74,7 +74,7 @@ namespace EcommerceAPI.Controllers
         /// <summary>
         /// Update an existing role
         /// </summary>
-        /// <param name="id">The role ID to update</param>
+        /// <param name="id">The unique identifier of the role to update</param>
         /// <param name="dto">Updated role data</param>
         /// <response code="204">Role updated successfully</response>
         /// <response code="400">Invalid request</response>
@@ -94,7 +94,7 @@ namespace EcommerceAPI.Controllers
         /// <summary>
         /// Delete a role
         /// </summary>
-        /// <param name="id">The role ID to delete</param>
+        /// <param name="id">The unique identifier of the role to delete</param>
         /// <response code="204">Role deleted successfully</response>
         /// <response code="404">Role not found</response>
         [HttpDelete("{id}")]

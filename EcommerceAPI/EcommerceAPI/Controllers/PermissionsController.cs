@@ -34,7 +34,7 @@ namespace EcommerceAPI.Controllers
         /// <summary>
         /// Retrieve a specific permission by ID
         /// </summary>
-        /// <param name="id">The permission ID</param>
+        /// <param name="id">The unique identifier of the permission to retrieve</param>
         /// <returns>The permission with the specified ID</returns>
         /// <response code="200">Returns the permission</response>
         /// <response code="404">Permission not found</response>
@@ -55,7 +55,7 @@ namespace EcommerceAPI.Controllers
         /// <summary>
         /// Create a new permission
         /// </summary>
-        /// <param name="permission">Permission data to create</param>
+        /// <param name="permissionDto">Permission data to create</param>
         /// <returns>The created permission</returns>
         /// <response code="201">Permission created successfully</response>
         /// <response code="400">Invalid permission data</response>
@@ -63,8 +63,23 @@ namespace EcommerceAPI.Controllers
         [HasPermission(Permissions.AdminManagement.ManagePermissions)]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<Permission>> Create(Permission permission)
+        public async Task<ActionResult<Permission>> Create([FromBody] DTOs.CreatePermissionDto permissionDto)
         {
+            if (permissionDto == null)
+            {
+                return BadRequest("Permission cannot be null");
+            }
+
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var permission = new Permission
+            {
+                Slug = permissionDto.Slug
+            };
+
             var createdPermission = await _permissionService.CreateAsync(permission);
             return CreatedAtAction(nameof(GetById), new { id = createdPermission.Id }, createdPermission);
         }
@@ -72,8 +87,8 @@ namespace EcommerceAPI.Controllers
         /// <summary>
         /// Update an existing permission
         /// </summary>
-        /// <param name="id">The permission ID to update</param>
-        /// <param name="permission">Updated permission data</param>
+        /// <param name="id">The unique identifier of the permission to update</param>
+        /// <param name="permissionDto">Updated permission data</param>
         /// <response code="204">Permission updated successfully</response>
         /// <response code="400">Invalid request</response>
         /// <response code="404">Permission not found</response>
@@ -82,12 +97,29 @@ namespace EcommerceAPI.Controllers
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> Update(int id, Permission permission)
+        public async Task<IActionResult> Update(int id, [FromBody] DTOs.UpdatePermissionDto permissionDto)
         {
-            if (id != permission.Id)
+            if (permissionDto == null)
             {
-                return BadRequest();
+                return BadRequest("Permission cannot be null");
             }
+
+            if (id != permissionDto.Id)
+            {
+                return BadRequest("ID mismatch");
+            }
+
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var permission = new Permission
+            {
+                Id = permissionDto.Id,
+                Slug = permissionDto.Slug
+            };
+
             await _permissionService.UpdateAsync(permission);
             return NoContent();
         }
@@ -95,7 +127,7 @@ namespace EcommerceAPI.Controllers
         /// <summary>
         /// Delete a permission
         /// </summary>
-        /// <param name="id">The permission ID to delete</param>
+        /// <param name="id">The unique identifier of the permission to delete</param>
         /// <response code="204">Permission deleted successfully</response>
         /// <response code="404">Permission not found</response>
         [HttpDelete("{id}")]

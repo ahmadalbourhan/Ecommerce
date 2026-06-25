@@ -9,11 +9,20 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using System.Text.Json.Serialization;
+using EcommerceAPI.DTOs;
+using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(o =>
+    {
+        // Prevent cycles when serializing EF navigation properties
+        o.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+        o.JsonSerializerOptions.MaxDepth = 64;
+    });
 
 // Register DbContext
 builder.Services.AddDbContext<EcommerceDbContext>(options =>
@@ -125,6 +134,33 @@ app.UseHttpsRedirection();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Custom middleware to return JSON ResponseDto for 401/403
+app.Use(async (context, next) =>
+{
+    await next();
+
+    if (context.Response.HasStarted)
+    {
+        return;
+    }
+
+    var status = context.Response.StatusCode;
+    if (status == StatusCodes.Status401Unauthorized)
+    {
+        context.Response.ContentType = "application/json";
+        var dto = new ResponseDto(401, "Unauthorized: Authentication is required to access this resource.", false);
+        var json = JsonSerializer.Serialize(dto);
+        await context.Response.WriteAsync(json);
+    }
+    else if (status == StatusCodes.Status403Forbidden)
+    {
+        context.Response.ContentType = "application/json";
+        var dto = new ResponseDto(403, "Forbidden: You do not have permission to perform this action.", false);
+        var json = JsonSerializer.Serialize(dto);
+        await context.Response.WriteAsync(json);
+    }
+});
 
 app.MapControllers();
 

@@ -28,7 +28,7 @@ namespace EcommerceAPI.DTOs
     public class RoleResponseDto
     {
         /// <summary>
-        /// The role ID
+        /// The unique identifier for the role
         /// </summary>
         public int Id { get; set; }
 

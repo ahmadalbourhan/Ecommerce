@@ -73,6 +73,7 @@ namespace EcommerceAPI.Controllers
         /// <summary>
         /// Get a specific Admin account by ID (SuperAdmin only)
         /// </summary>
+        /// <param name="id">The unique identifier of the admin to retrieve</param>
         [HttpGet("{id}")]
         [HasPermission(Permissions.AdminManagement.Read)]
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -99,6 +100,8 @@ namespace EcommerceAPI.Controllers
         /// <summary>
         /// Assign permissions to an Admin (SuperAdmin only)
         /// </summary>
+        /// <param name="id">The unique identifier of the admin to assign permissions to</param>
+        /// <param name="dto">The permissions to assign</param>
         [HttpPost("{id}/permissions")]
         [HasPermission(Permissions.AdminManagement.ManagePermissions)]
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -128,6 +131,8 @@ namespace EcommerceAPI.Controllers
         /// <summary>
         /// Revoke permissions from an Admin (SuperAdmin only)
         /// </summary>
+        /// <param name="id">The unique identifier of the admin to revoke permissions from</param>
+        /// <param name="dto">The permissions to revoke</param>
         [HttpDelete("{id}/permissions")]
         [HasPermission(Permissions.AdminManagement.ManagePermissions)]
         [ProducesResponseType(StatusCodes.Status200OK)]

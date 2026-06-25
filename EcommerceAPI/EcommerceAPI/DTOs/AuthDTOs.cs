@@ -25,6 +25,9 @@ namespace EcommerceAPI.DTOs
 
     public class UserDto
     {
+        /// <summary>
+        /// The unique identifier for the user
+        /// </summary>
         public int Id { get; set; }
         public string Email { get; set; } = string.Empty;
         public string FullName { get; set; } = string.Empty;
@@ -41,6 +44,9 @@ namespace EcommerceAPI.DTOs
 
     public class AdminDetailDto
     {
+        /// <summary>
+        /// The unique identifier for the admin
+        /// </summary>
         public int Id { get; set; }
         public string Email { get; set; } = string.Empty;
         public string FullName { get; set; } = string.Empty;

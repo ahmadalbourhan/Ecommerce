@@ -34,7 +34,7 @@ namespace EcommerceAPI.Controllers
         /// <summary>
         /// Retrieve a specific user by ID
         /// </summary>
-        /// <param name="id">The user ID</param>
+        /// <param name="id">The unique identifier of the user to retrieve</param>
         /// <returns>The user with the specified ID</returns>
         /// <response code="200">Returns the user</response>
         /// <response code="404">User not found</response>
@@ -55,7 +55,7 @@ namespace EcommerceAPI.Controllers
         /// <summary>
         /// Create a new user
         /// </summary>
-        /// <param name="user">User data to create</param>
+        /// <param name="userDto">User data to create</param>
         /// <returns>The created user</returns>
         /// <response code="201">User created successfully</response>
         /// <response code="400">Invalid user data</response>
@@ -63,8 +63,27 @@ namespace EcommerceAPI.Controllers
         [HasPermission(Permissions.Users.Create)]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<User>> Create(User user)
+        public async Task<ActionResult<User>> Create([FromBody] DTOs.CreateUserDto userDto)
         {
+            if (userDto == null)
+            {
+                return BadRequest("User cannot be null");
+            }
+
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var user = new User
+            {
+                Name = userDto.Name,
+                Email = userDto.Email,
+                Username = userDto.Username,
+                Password = userDto.Password,
+                IsActive = userDto.IsActive
+            };
+
             var createdUser = await _userService.CreateAsync(user);
             return CreatedAtAction(nameof(GetById), new { id = createdUser.Id }, createdUser);
         }
@@ -72,8 +91,8 @@ namespace EcommerceAPI.Controllers
         /// <summary>
         /// Update an existing user
         /// </summary>
-        /// <param name="id">The user ID to update</param>
-        /// <param name="user">Updated user data</param>
+        /// <param name="id">The unique identifier of the user to update</param>
+        /// <param name="userDto">Updated user data</param>
         /// <response code="204">User updated successfully</response>
         /// <response code="400">Invalid request</response>
         /// <response code="404">User not found</response>
@@ -82,12 +101,34 @@ namespace EcommerceAPI.Controllers
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> Update(int id, User user)
+        public async Task<IActionResult> Update(int id, [FromBody] DTOs.UpdateUserDto userDto)
         {
-            if (id != user.Id)
+            if (userDto == null)
             {
-                return BadRequest();
+                return BadRequest("User cannot be null");
             }
+
+            if (id != userDto.Id)
+            {
+                return BadRequest("ID mismatch");
+            }
+
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var user = new User
+            {
+                Id = userDto.Id,
+                Name = userDto.Name,
+                Email = userDto.Email,
+                Username = userDto.Username,
+                // Only update password when provided
+                Password = string.IsNullOrWhiteSpace(userDto.Password) ? null ?? string.Empty : userDto.Password,
+                IsActive = userDto.IsActive
+            };
+
             await _userService.UpdateAsync(user);
             return NoContent();
         }
@@ -95,7 +136,7 @@ namespace EcommerceAPI.Controllers
         /// <summary>
         /// Delete a user
         /// </summary>
-        /// <param name="id">The user ID to delete</param>
+        /// <param name="id">The unique identifier of the user to delete</param>
         /// <response code="204">User deleted successfully</response>
         /// <response code="404">User not found</response>
         [HttpDelete("{id}")]
