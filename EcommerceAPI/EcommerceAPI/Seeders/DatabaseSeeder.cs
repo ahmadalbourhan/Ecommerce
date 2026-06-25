@@ -1,7 +1,6 @@
 using EcommerceAPI.Constants;
 using EcommerceAPI.Data;
 using EcommerceAPI.Models;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 namespace EcommerceAPI.Seeders
@@ -9,19 +8,13 @@ namespace EcommerceAPI.Seeders
     public class DatabaseSeeder
     {
         private readonly EcommerceDbContext _context;
-        private readonly UserManager<User> _userManager;
-        private readonly RoleManager<Role> _roleManager;
         private readonly ILogger<DatabaseSeeder> _logger;
 
         public DatabaseSeeder(
             EcommerceDbContext context,
-            UserManager<User> userManager,
-            RoleManager<Role> roleManager,
             ILogger<DatabaseSeeder> logger)
         {
             _context = context;
-            _userManager = userManager;
-            _roleManager = roleManager;
             _logger = logger;
         }
 
@@ -62,13 +55,11 @@ namespace EcommerceAPI.Seeders
                 var exists = await _context.Roles.AnyAsync(r => r.Name == roleName);
                 if (!exists)
                 {
-                    // Use RoleManager to ensure Identity tables are populated correctly
                     var role = new Role { Name = roleName };
-                    await _roleManager.CreateAsync(role);
+                    await _context.Roles.AddAsync(role);
                 }
             }
 
-            // Save if any new roles were added to the custom Role table
             await _context.SaveChangesAsync();
         }
 
@@ -78,23 +69,28 @@ namespace EcommerceAPI.Seeders
             const string adminEmail = "superadmin@example.com";
             const string adminUserName = "superadmin";
             const string adminFullName = "Super Administrator";
-            const string adminPassword = "ChangeMe123!"; // meets current password policy
+            const string adminPassword = "ChangeMe123!";
 
             // Ensure role exists
-            var roleExists = await _roleManager.RoleExistsAsync("SuperAdmin");
-            if (!roleExists)
+            var superAdminRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "SuperAdmin");
+            if (superAdminRole == null)
             {
                 _logger.LogWarning("SuperAdmin role does not exist when trying to create default user. Creating role.");
-                await _roleManager.CreateAsync(new Role { Name = "SuperAdmin" });
+                superAdminRole = new Role { Name = "SuperAdmin" };
+                await _context.Roles.AddAsync(superAdminRole);
+                await _context.SaveChangesAsync();
             }
 
-            var existing = await _userManager.FindByEmailAsync(adminEmail);
+            var existing = await _context.Users.FirstOrDefaultAsync(u => u.Email == adminEmail);
             if (existing != null)
             {
                 // Ensure the user is in the SuperAdmin role
-                if (!await _userManager.IsInRoleAsync(existing, "SuperAdmin"))
+                var hasRole = await _context.UserRoles.AnyAsync(ur => ur.UserId == existing.Id && ur.RoleId == superAdminRole.Id);
+                if (!hasRole)
                 {
-                    await _userManager.AddToRoleAsync(existing, "SuperAdmin");
+                    var userRole = new UserRole { UserId = existing.Id, RoleId = superAdminRole.Id };
+                    await _context.UserRoles.AddAsync(userRole);
+                    await _context.SaveChangesAsync();
                 }
 
                 _logger.LogInformation("SuperAdmin user already exists, skipping creation.");
@@ -103,27 +99,25 @@ namespace EcommerceAPI.Seeders
 
             var user = new User
             {
-                UserName = adminUserName,
+                Username = adminUserName,
                 Email = adminEmail,
-                FullName = adminFullName,
-                EmailConfirmed = true,
+                Name = adminFullName,
+                Password = BCrypt.Net.BCrypt.HashPassword(adminPassword),
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow
             };
 
-            var createResult = await _userManager.CreateAsync(user, adminPassword);
-            if (!createResult.Succeeded)
-            {
-                _logger.LogError("Failed to create SuperAdmin user: {errors}", string.Join(';', createResult.Errors.Select(e => e.Description)));
-                return;
-            }
+            await _context.Users.AddAsync(user);
+            await _context.SaveChangesAsync();
 
-            var addRoleResult = await _userManager.AddToRoleAsync(user, "SuperAdmin");
-            if (!addRoleResult.Succeeded)
+            // Assign SuperAdmin role
+            var userRoleAssignment = new UserRole
             {
-                _logger.LogError("Failed to assign SuperAdmin role to user: {errors}", string.Join(';', addRoleResult.Errors.Select(e => e.Description)));
-                return;
-            }
+                UserId = user.Id,
+                RoleId = superAdminRole.Id
+            };
+            await _context.UserRoles.AddAsync(userRoleAssignment);
+            await _context.SaveChangesAsync();
 
             _logger.LogInformation("Created default SuperAdmin user: {email}", adminEmail);
         }
@@ -165,7 +159,7 @@ namespace EcommerceAPI.Seeders
                 return;
             }
 
-            // Get existing permission slugs assigned to role via RolePermissions
+            // Get existing permission IDs assigned to role via RolePermissions
             var existingPermissionIds = superAdminRole.RolePermissions.Select(rp => rp.PermissionId).ToHashSet();
 
             var allPermissions = await _context.Permissions.ToListAsync();

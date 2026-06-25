@@ -1,5 +1,8 @@
 using EcommerceAPI.Models;
 using EcommerceAPI.Services;
+using EcommerceAPI.Authorization;
+using EcommerceAPI.Constants;
+using EcommerceAPI.DTOs;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EcommerceAPI.Controllers
@@ -21,6 +24,7 @@ namespace EcommerceAPI.Controllers
         /// <returns>List of all roles</returns>
         /// <response code="200">Returns the list of roles</response>
         [HttpGet]
+        [HasPermission(Permissions.Roles.Read)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<ActionResult<IEnumerable<Role>>> GetAll()
         {
@@ -36,6 +40,7 @@ namespace EcommerceAPI.Controllers
         /// <response code="200">Returns the role</response>
         /// <response code="404">Role not found</response>
         [HttpGet("{id}")]
+        [HasPermission(Permissions.Roles.Read)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<Role>> GetById(int id)
@@ -51,15 +56,17 @@ namespace EcommerceAPI.Controllers
         /// <summary>
         /// Create a new role
         /// </summary>
-        /// <param name="role">Role data to create</param>
+        /// <param name="dto">Role data to create</param>
         /// <returns>The created role</returns>
         /// <response code="201">Role created successfully</response>
         /// <response code="400">Invalid role data</response>
         [HttpPost]
+        [HasPermission(Permissions.Roles.Create)]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<Role>> Create(Role role)
+        public async Task<ActionResult<Role>> Create([FromBody] CreateRoleDto dto)
         {
+            var role = new Role { Name = dto.Name };
             var createdRole = await _roleService.CreateAsync(role);
             return CreatedAtAction(nameof(GetById), new { id = createdRole.Id }, createdRole);
         }
@@ -68,20 +75,18 @@ namespace EcommerceAPI.Controllers
         /// Update an existing role
         /// </summary>
         /// <param name="id">The role ID to update</param>
-        /// <param name="role">Updated role data</param>
+        /// <param name="dto">Updated role data</param>
         /// <response code="204">Role updated successfully</response>
         /// <response code="400">Invalid request</response>
         /// <response code="404">Role not found</response>
         [HttpPut("{id}")]
+        [HasPermission(Permissions.Roles.Update)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> Update(int id, Role role)
+        public async Task<IActionResult> Update(int id, [FromBody] UpdateRoleDto dto)
         {
-            if (id != role.Id)
-            {
-                return BadRequest();
-            }
+            var role = new Role { Id = id, Name = dto.Name };
             await _roleService.UpdateAsync(role);
             return NoContent();
         }
@@ -93,6 +98,7 @@ namespace EcommerceAPI.Controllers
         /// <response code="204">Role deleted successfully</response>
         /// <response code="404">Role not found</response>
         [HttpDelete("{id}")]
+        [HasPermission(Permissions.Roles.Delete)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Delete(int id)
@@ -113,6 +119,7 @@ namespace EcommerceAPI.Controllers
         /// <response code="204">Permission assigned successfully</response>
         /// <response code="400">Invalid request</response>
         [HttpPost("{id}/permissions")]
+        [HasPermission(Permissions.Roles.ManagePermissions)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> AssignPermission(int id, [FromBody] PermissionAssignmentDto dto)

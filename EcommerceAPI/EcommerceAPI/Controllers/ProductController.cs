@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Mvc;
 using EcommerceAPI.Models;
 using EcommerceAPI.Services;
 using EcommerceAPI.DTOs;
+using EcommerceAPI.Authorization;
+using EcommerceAPI.Constants;
 
 namespace EcommerceAPI.Controllers
 {
@@ -25,6 +27,7 @@ namespace EcommerceAPI.Controllers
         /// <response code="200">Returns the list of products</response>
         /// <response code="500">Internal server error</response>
         [HttpGet]
+        [HasPermission(Permissions.Products.Read)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult<ResponseDto<IEnumerable<Product>>>> GetAll()
@@ -50,6 +53,7 @@ namespace EcommerceAPI.Controllers
         /// <response code="400">Invalid user ID</response>
         /// <response code="500">Internal server error</response>
         [HttpGet("user/{userId}")]
+        [HasPermission(Permissions.Products.Read)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
@@ -82,6 +86,7 @@ namespace EcommerceAPI.Controllers
         /// <response code="404">Product not found</response>
         /// <response code="500">Internal server error</response>
         [HttpGet("{id}")]
+        [HasPermission(Permissions.Products.Read)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -118,6 +123,7 @@ namespace EcommerceAPI.Controllers
         /// <response code="400">Invalid product data or category not found</response>
         /// <response code="500">Internal server error</response>
         [HttpPost]
+        [HasPermission(Permissions.Products.Create)]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
@@ -161,6 +167,7 @@ namespace EcommerceAPI.Controllers
         /// <response code="404">Product not found</response>
         /// <response code="500">Internal server error</response>
         [HttpPut("{id}")]
+        [HasPermission(Permissions.Products.Update)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -213,6 +220,7 @@ namespace EcommerceAPI.Controllers
         /// <response code="404">Product not found</response>
         /// <response code="500">Internal server error</response>
         [HttpDelete("{id}")]
+        [HasPermission(Permissions.Products.Delete)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]

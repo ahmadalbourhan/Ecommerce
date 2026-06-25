@@ -6,7 +6,6 @@ using EcommerceAPI.Services;
 using EcommerceAPI.Seeders;
 using EcommerceAPI.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -14,30 +13,11 @@ using Microsoft.OpenApi.Models;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddScoped<PermissionAuthorizationFilter>();
-
-builder.Services.AddControllers(options =>
-{
-    // Add the permission authorization filter globally (resolved from DI)
-    options.Filters.AddService<PermissionAuthorizationFilter>();
-});
+builder.Services.AddControllers();
 
 // Register DbContext
 builder.Services.AddDbContext<EcommerceDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
-
-// Identity
-builder.Services.AddIdentity<User, Role>(options =>
-{
-    options.User.RequireUniqueEmail = true;
-    options.Password.RequireDigit = true;
-    options.Password.RequiredLength = 8;
-    options.Password.RequireNonAlphanumeric = false;
-    options.Password.RequireUppercase = true;
-    options.Password.RequireLowercase = true;
-})
-.AddEntityFrameworkStores<EcommerceDbContext>()
-.AddDefaultTokenProviders();
 
 // Register repositories
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
@@ -55,8 +35,8 @@ builder.Services.AddScoped<IPermissionService, PermissionService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IAdminService, AdminService>();
 
-// Authorization handlers
-builder.Services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationHandler, PermissionAuthorizationHandler>();
+// Permission-based authorization policies (one policy per permission slug)
+builder.Services.AddPermissionAuthorization();
 
 // JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("Jwt");
@@ -88,7 +68,7 @@ builder.Services.AddAuthentication(options =>
 // Swagger/OpenAPI with JWT support
 builder.Services.AddEndpointsApiExplorer();
 
-// Register DatabaseSeeder (Identity-aware)
+// Register DatabaseSeeder
 builder.Services.AddScoped<DatabaseSeeder>();
 builder.Services.AddSwaggerGen(options =>
 {

@@ -1,3 +1,4 @@
+using EcommerceAPI.Services;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 
@@ -5,46 +6,56 @@ namespace EcommerceAPI.Authorization
 {
     public class PermissionAuthorizationHandler : AuthorizationHandler<PermissionRequirement>
     {
+        private readonly IPermissionService _permissionService;
         private readonly ILogger<PermissionAuthorizationHandler> _logger;
 
-        public PermissionAuthorizationHandler(ILogger<PermissionAuthorizationHandler> logger)
+        public PermissionAuthorizationHandler(
+            IPermissionService permissionService,
+            ILogger<PermissionAuthorizationHandler> logger)
         {
+            _permissionService = permissionService;
             _logger = logger;
         }
 
-        protected override Task HandleRequirementAsync(
+        protected override async Task HandleRequirementAsync(
             AuthorizationHandlerContext context,
             PermissionRequirement requirement)
         {
-            // SuperAdmin always has access
-            var userRole = context.User.FindFirst("role")?.Value;
-            if (userRole == "SuperAdmin")
+            if (context.User.Identity?.IsAuthenticated != true)
             {
-                context.Succeed(requirement);
-                return Task.CompletedTask;
+                return;
             }
 
-            // Check for permission claim
-            var hasClaim = context.User.FindAll(ClaimTypes.Role)
-                .Union(context.User.FindAll("role"))
+            var userRole = context.User.FindFirst("role")?.Value;
+            if (string.Equals(userRole, "SuperAdmin", StringComparison.OrdinalIgnoreCase))
+            {
+                context.Succeed(requirement);
+                return;
+            }
+
+            var hasPermissionClaim = context.User.FindAll("permission")
                 .Any(c => c.Value == requirement.Permission);
 
-            if (!hasClaim)
-            {
-                hasClaim = context.User.FindAll("permission")
-                    .Any(c => c.Value == requirement.Permission);
-            }
-
-            if (hasClaim)
+            if (hasPermissionClaim)
             {
                 context.Succeed(requirement);
-            }
-            else
-            {
-                _logger.LogWarning($"User {context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value} denied access to {requirement.Permission}");
+                return;
             }
 
-            return Task.CompletedTask;
+            var userIdClaim = context.User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim != null && int.TryParse(userIdClaim.Value, out var userId))
+            {
+                if (await _permissionService.HasPermissionAsync(userId, requirement.Permission))
+                {
+                    context.Succeed(requirement);
+                    return;
+                }
+            }
+
+            _logger.LogWarning(
+                "User {UserId} denied access to permission {Permission}",
+                userIdClaim?.Value ?? "unknown",
+                requirement.Permission);
         }
     }
 }

@@ -1,12 +1,15 @@
 using System;
 using System.Collections.Generic;
-using Microsoft.AspNetCore.Identity;
 
 namespace EcommerceAPI.Models
 {
-    public class User : IdentityUser<int>
+    public class User
     {
-        public string FullName { get; set; } = string.Empty;
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string Username { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public bool IsActive { get; set; } = true;
 

@@ -1,17 +1,20 @@
+using Microsoft.AspNetCore.Authorization;
+
 namespace EcommerceAPI.Authorization
 {
     /// <summary>
-    /// Attribute to protect endpoints with permission-based authorization.
-    /// Usage: [HasPermission("Products.Create")]
+    /// Requires JWT authentication and a specific permission policy.
+    /// Usage: [HasPermission(Permissions.Products.Create)]
     /// </summary>
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = true)]
-    public class HasPermissionAttribute : Attribute
+    public class HasPermissionAttribute : AuthorizeAttribute
     {
         public string Permission { get; }
 
         public HasPermissionAttribute(string permission)
         {
             Permission = permission;
+            Policy = PermissionPolicies.Name(permission);
         }
     }
 }

@@ -1,18 +1,17 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using EcommerceAPI.Models;
 
 namespace EcommerceAPI.Data
 {
-    // Use IdentityDbContext so we can leverage ASP.NET Identity (UserManager/RoleManager/etc.)
-    public class EcommerceDbContext : IdentityDbContext<User, Role, int>
+    public class EcommerceDbContext : DbContext
     {
         public EcommerceDbContext(DbContextOptions<EcommerceDbContext> options)
             : base(options)
         {
         }
 
+        public DbSet<User> Users { get; set; }
+        public DbSet<Role> Roles { get; set; }
         public DbSet<Product> Products { get; set; }
         public DbSet<Category> Categories { get; set; }
         public DbSet<UserRole> UserRoles { get; set; }
@@ -25,20 +24,48 @@ namespace EcommerceAPI.Data
         {
             base.OnModelCreating(modelBuilder);
 
-            // Map Identity tables to custom table names (singular, lowercase)
-            modelBuilder.Entity<User>(b => { b.ToTable("user"); });
-            modelBuilder.Entity<Role>(b => { b.ToTable("role"); });
-            modelBuilder.Entity<IdentityUserRole<int>>(b => { b.ToTable("role_user"); b.HasKey(r => new { r.UserId, r.RoleId }); });
-            modelBuilder.Entity<IdentityUserClaim<int>>(b => { b.ToTable("user_claim"); });
-            modelBuilder.Entity<IdentityUserLogin<int>>(b => { b.ToTable("user_login"); });
-            modelBuilder.Entity<IdentityRoleClaim<int>>(b => { b.ToTable("role_claim"); });
-            modelBuilder.Entity<IdentityUserToken<int>>(b => { b.ToTable("user_token"); });
+            // Configure User entity
+            modelBuilder.Entity<User>(entity =>
+            {
+                entity.ToTable("user");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Name)
+                    .IsRequired()
+                    .HasMaxLength(255);
+
+                entity.Property(e => e.Email)
+                    .IsRequired()
+                    .HasMaxLength(255);
+
+                entity.Property(e => e.Username)
+                    .IsRequired()
+                    .HasMaxLength(255);
+
+                entity.Property(e => e.Password)
+                    .IsRequired();
+
+                entity.HasIndex(e => e.Email).IsUnique();
+                entity.HasIndex(e => e.Username).IsUnique();
+            });
+
+            // Configure Role entity
+            modelBuilder.Entity<Role>(entity =>
+            {
+                entity.ToTable("role");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Name)
+                    .IsRequired()
+                    .HasMaxLength(255);
+
+                entity.HasIndex(e => e.Name).IsUnique();
+            });
 
             // Configure Category entity
             modelBuilder.Entity<Category>(entity =>
             {
                 entity.ToTable("category");
-
                 entity.HasKey(e => e.Id);
 
                 entity.Property(e => e.Name)
@@ -49,10 +76,11 @@ namespace EcommerceAPI.Data
                     .HasMaxLength(500);
             });
 
-            // Configure UserRole pivot table navigation (do not configure key on derived type)
+            // Configure UserRole pivot table
             modelBuilder.Entity<UserRole>(entity =>
             {
                 entity.ToTable("role_user");
+                entity.HasKey(e => new { e.UserId, e.RoleId });
 
                 entity.HasOne(ur => ur.User)
                     .WithMany(u => u.UserRoles)
@@ -74,6 +102,8 @@ namespace EcommerceAPI.Data
                 entity.Property(e => e.Slug)
                     .IsRequired()
                     .HasMaxLength(255);
+
+                entity.HasIndex(e => e.Slug).IsUnique();
             });
 
             // Configure RolePermission pivot table
@@ -156,12 +186,11 @@ namespace EcommerceAPI.Data
                 entity.HasIndex(p => p.UserId);
             });
 
-            // Configure RefreshToken table name
+            // Configure RefreshToken table
             modelBuilder.Entity<RefreshToken>(entity =>
             {
                 entity.ToTable("refresh_token");
                 entity.HasKey(e => e.Id);
-
                 entity.HasIndex("UserId");
             });
         }

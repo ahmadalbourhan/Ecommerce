@@ -9,7 +9,6 @@ namespace EcommerceAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize]
     public class AdminsController : ControllerBase
     {
         private readonly IAdminService _adminService;

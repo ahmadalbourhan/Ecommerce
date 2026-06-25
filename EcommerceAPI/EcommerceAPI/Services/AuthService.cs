@@ -1,6 +1,6 @@
 using EcommerceAPI.DTOs;
 using EcommerceAPI.Models;
-using Microsoft.AspNetCore.Identity;
+using EcommerceAPI.Data;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.EntityFrameworkCore;
 using System.IdentityModel.Tokens.Jwt;
@@ -19,18 +19,18 @@ namespace EcommerceAPI.Services
 
     public class AuthService : IAuthService
     {
-        private readonly UserManager<User> _userManager;
+        private readonly EcommerceDbContext _context;
         private readonly IConfiguration _configuration;
         private readonly IPermissionService _permissionService;
         private readonly ILogger<AuthService> _logger;
 
         public AuthService(
-            UserManager<User> userManager,
+            EcommerceDbContext context,
             IConfiguration configuration,
             IPermissionService permissionService,
             ILogger<AuthService> logger)
         {
-            _userManager = userManager;
+            _context = context;
             _configuration = configuration;
             _permissionService = permissionService;
             _logger = logger;
@@ -40,14 +40,18 @@ namespace EcommerceAPI.Services
         {
             try
             {
-                var user = await _userManager.FindByEmailAsync(request.Email);
+                var user = await _context.Users
+                    .Include(u => u.UserRoles)
+                    .ThenInclude(ur => ur.Role)
+                    .FirstOrDefaultAsync(u => u.Email == request.Email);
+
                 if (user == null || !user.IsActive)
                 {
                     _logger.LogWarning($"Login failed for email: {request.Email}");
                     throw new UnauthorizedAccessException("Invalid email or password.");
                 }
 
-                var passwordValid = await _userManager.CheckPasswordAsync(user, request.Password);
+                var passwordValid = BCrypt.Net.BCrypt.Verify(request.Password, user.Password);
                 if (!passwordValid)
                 {
                     _logger.LogWarning($"Invalid password for email: {request.Email}");
@@ -65,23 +69,14 @@ namespace EcommerceAPI.Services
                     UserId = user.Id
                 });
 
-                await _userManager.UpdateAsync(user);
+                await _context.SaveChangesAsync();
 
-                var userRoles = await _userManager.GetRolesAsync(user);
                 var permissions = await _permissionService.GetUserPermissionsAsync(user.Id);
 
                 return new LoginResponse
                 {
                     AccessToken = accessToken,
-                    RefreshToken = refreshToken,
-                    User = new UserDto
-                    {
-                        Id = user.Id,
-                        Email = user.Email ?? string.Empty,
-                        FullName = user.FullName,
-                        Role = userRoles.FirstOrDefault() ?? "User",
-                        Permissions = permissions
-                    }
+                    RefreshToken = refreshToken
                 };
             }
             catch (Exception ex)
@@ -95,8 +90,7 @@ namespace EcommerceAPI.Services
         {
             try
             {
-                var refreshToken = await _userManager.Users
-                    .SelectMany(u => u.RefreshTokens)
+                var refreshToken = await _context.RefreshTokens
                     .FirstOrDefaultAsync(rt => rt.Token == refreshTokenString);
 
                 if (refreshToken == null || refreshToken.IsRevoked || refreshToken.ExpiryDate < DateTime.UtcNow)
@@ -104,7 +98,11 @@ namespace EcommerceAPI.Services
                     throw new UnauthorizedAccessException("Invalid or expired refresh token.");
                 }
 
-                var user = await _userManager.FindByIdAsync(refreshToken.UserId.ToString());
+                var user = await _context.Users
+                    .Include(u => u.UserRoles)
+                    .ThenInclude(ur => ur.Role)
+                    .FirstOrDefaultAsync(u => u.Id == refreshToken.UserId);
+
                 if (user == null || !user.IsActive)
                 {
                     throw new UnauthorizedAccessException("User not found or inactive.");
@@ -122,7 +120,7 @@ namespace EcommerceAPI.Services
                     UserId = user.Id
                 });
 
-                await _userManager.UpdateAsync(user);
+                await _context.SaveChangesAsync();
 
                 return new RefreshTokenResponse
                 {
@@ -141,17 +139,23 @@ namespace EcommerceAPI.Services
         {
             try
             {
-                var user = await _userManager.FindByIdAsync(userId.ToString());
+                var user = await _context.Users
+                    .FirstOrDefaultAsync(u => u.Id == userId);
+
                 if (user == null)
                     return false;
 
                 // Revoke all active refresh tokens
-                foreach (var token in user.RefreshTokens.Where(rt => !rt.IsRevoked))
+                var activeTokens = await _context.RefreshTokens
+                    .Where(rt => rt.UserId == userId && !rt.IsRevoked)
+                    .ToListAsync();
+
+                foreach (var token in activeTokens)
                 {
                     token.IsRevoked = true;
                 }
 
-                await _userManager.UpdateAsync(user);
+                await _context.SaveChangesAsync();
                 return true;
             }
             catch (Exception ex)
@@ -175,14 +179,14 @@ namespace EcommerceAPI.Services
             var secretKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["Secret"] ?? string.Empty));
             var credentials = new SigningCredentials(secretKey, SecurityAlgorithms.HmacSha256);
 
-            var userRoles = await _userManager.GetRolesAsync(user);
+            var userRoles = user.UserRoles.Select(ur => ur.Role.Name).ToList();
             var permissions = await _permissionService.GetUserPermissionsAsync(user.Id);
 
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                 new Claim(ClaimTypes.Email, user.Email ?? string.Empty),
-                new Claim(ClaimTypes.Name, user.FullName),
+                new Claim(ClaimTypes.Name, user.Name),
                 new Claim("role", userRoles.FirstOrDefault() ?? "User")
             };
 

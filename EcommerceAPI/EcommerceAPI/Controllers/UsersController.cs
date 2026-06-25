@@ -1,5 +1,7 @@
 using EcommerceAPI.Models;
 using EcommerceAPI.Services;
+using EcommerceAPI.Authorization;
+using EcommerceAPI.Constants;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EcommerceAPI.Controllers
@@ -21,6 +23,7 @@ namespace EcommerceAPI.Controllers
         /// <returns>List of all users</returns>
         /// <response code="200">Returns the list of users</response>
         [HttpGet]
+        [HasPermission(Permissions.Users.Read)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<ActionResult<IEnumerable<User>>> GetAll()
         {
@@ -36,6 +39,7 @@ namespace EcommerceAPI.Controllers
         /// <response code="200">Returns the user</response>
         /// <response code="404">User not found</response>
         [HttpGet("{id}")]
+        [HasPermission(Permissions.Users.Read)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<User>> GetById(int id)
@@ -56,6 +60,7 @@ namespace EcommerceAPI.Controllers
         /// <response code="201">User created successfully</response>
         /// <response code="400">Invalid user data</response>
         [HttpPost]
+        [HasPermission(Permissions.Users.Create)]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<User>> Create(User user)
@@ -73,6 +78,7 @@ namespace EcommerceAPI.Controllers
         /// <response code="400">Invalid request</response>
         /// <response code="404">User not found</response>
         [HttpPut("{id}")]
+        [HasPermission(Permissions.Users.Update)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -93,6 +99,7 @@ namespace EcommerceAPI.Controllers
         /// <response code="204">User deleted successfully</response>
         /// <response code="404">User not found</response>
         [HttpDelete("{id}")]
+        [HasPermission(Permissions.Users.Delete)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Delete(int id)
@@ -113,6 +120,7 @@ namespace EcommerceAPI.Controllers
         /// <response code="204">Role assigned successfully</response>
         /// <response code="400">Invalid request</response>
         [HttpPost("{id}/roles")]
+        [HasPermission(Permissions.Users.Update)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> AssignRole(int id, [FromBody] RoleAssignmentDto dto)

@@ -1,7 +1,7 @@
 using EcommerceAPI.Constants;
 using EcommerceAPI.DTOs;
 using EcommerceAPI.Models;
-using Microsoft.AspNetCore.Identity;
+using EcommerceAPI.Data;
 using Microsoft.EntityFrameworkCore;
 
 namespace EcommerceAPI.Services
@@ -19,19 +19,16 @@ namespace EcommerceAPI.Services
 
     public class AdminService : IAdminService
     {
-        private readonly UserManager<User> _userManager;
-        private readonly RoleManager<Role> _roleManager;
+        private readonly EcommerceDbContext _context;
         private readonly IPermissionService _permissionService;
         private readonly ILogger<AdminService> _logger;
 
         public AdminService(
-            UserManager<User> userManager,
-            RoleManager<Role> roleManager,
+            EcommerceDbContext context,
             IPermissionService permissionService,
             ILogger<AdminService> logger)
         {
-            _userManager = userManager;
-            _roleManager = roleManager;
+            _context = context;
             _permissionService = permissionService;
             _logger = logger;
         }
@@ -41,29 +38,39 @@ namespace EcommerceAPI.Services
             try
             {
                 // Check if user already exists
-                var existingUser = await _userManager.FindByEmailAsync(dto.Email);
+                var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
                 if (existingUser != null)
                 {
                     throw new InvalidOperationException($"User with email {dto.Email} already exists.");
                 }
 
+                var adminRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "Admin");
+                if (adminRole == null)
+                {
+                    throw new InvalidOperationException("Admin role not found.");
+                }
+
                 var user = new User
                 {
-                    UserName = dto.Email,
+                    Username = dto.Email,
                     Email = dto.Email,
-                    FullName = dto.FullName,
+                    Name = dto.FullName,
+                    Password = BCrypt.Net.BCrypt.HashPassword(dto.Password),
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow
                 };
 
-                var result = await _userManager.CreateAsync(user, dto.Password);
-                if (!result.Succeeded)
-                {
-                    throw new InvalidOperationException($"Failed to create user: {string.Join(", ", result.Errors.Select(e => e.Description))}");
-                }
+                await _context.Users.AddAsync(user);
+                await _context.SaveChangesAsync();
 
                 // Assign Admin role
-                await _userManager.AddToRoleAsync(user, "Admin");
+                var userRole = new UserRole
+                {
+                    UserId = user.Id,
+                    RoleId = adminRole.Id
+                };
+                await _context.UserRoles.AddAsync(userRole);
+                await _context.SaveChangesAsync();
 
                 _logger.LogInformation($"Admin user created: {dto.Email}");
 
@@ -80,11 +87,16 @@ namespace EcommerceAPI.Services
         {
             try
             {
-                var adminRole = await _roleManager.FindByNameAsync("Admin");
+                var adminRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "Admin");
                 if (adminRole == null)
                     return new List<AdminDetailDto>();
 
-                var admins = await _userManager.GetUsersInRoleAsync("Admin");
+                var admins = await _context.UserRoles
+                    .Where(ur => ur.RoleId == adminRole.Id)
+                    .Include(ur => ur.User)
+                    .Select(ur => ur.User)
+                    .ToListAsync();
+
                 var result = new List<AdminDetailDto>();
 
                 foreach (var admin in admins)
@@ -94,7 +106,7 @@ namespace EcommerceAPI.Services
                     {
                         Id = admin.Id,
                         Email = admin.Email ?? string.Empty,
-                        FullName = admin.FullName,
+                        FullName = admin.Name,
                         IsActive = admin.IsActive,
                         CreatedAt = admin.CreatedAt,
                         Permissions = permissions
@@ -114,12 +126,16 @@ namespace EcommerceAPI.Services
         {
             try
             {
-                var user = await _userManager.FindByIdAsync(id.ToString());
+                var user = await _context.Users
+                    .Include(u => u.UserRoles)
+                    .ThenInclude(ur => ur.Role)
+                    .FirstOrDefaultAsync(u => u.Id == id);
+
                 if (user == null)
                     throw new KeyNotFoundException($"Admin user with ID {id} not found.");
 
-                var roles = await _userManager.GetRolesAsync(user);
-                if (!roles.Contains("Admin"))
+                var isAdmin = user.UserRoles.Any(ur => ur.Role.Name == "Admin");
+                if (!isAdmin)
                     throw new InvalidOperationException("User is not an admin.");
 
                 var permissions = await _permissionService.GetUserPermissionsAsync(id);
@@ -128,7 +144,7 @@ namespace EcommerceAPI.Services
                 {
                     Id = user.Id,
                     Email = user.Email ?? string.Empty,
-                    FullName = user.FullName,
+                    FullName = user.Name,
                     IsActive = user.IsActive,
                     CreatedAt = user.CreatedAt,
                     Permissions = permissions
@@ -145,7 +161,7 @@ namespace EcommerceAPI.Services
         {
             try
             {
-                var user = await _userManager.FindByIdAsync(adminId.ToString());
+                var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == adminId);
                 if (user == null)
                     throw new KeyNotFoundException($"Admin user with ID {adminId} not found.");
 
@@ -168,7 +184,7 @@ namespace EcommerceAPI.Services
         {
             try
             {
-                var user = await _userManager.FindByIdAsync(adminId.ToString());
+                var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == adminId);
                 if (user == null)
                     throw new KeyNotFoundException($"Admin user with ID {adminId} not found.");
 
@@ -191,15 +207,13 @@ namespace EcommerceAPI.Services
         {
             try
             {
-                var user = await _userManager.FindByIdAsync(adminId.ToString());
+                var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == adminId);
                 if (user == null)
                     throw new KeyNotFoundException($"Admin user with ID {adminId} not found.");
 
                 user.IsActive = isActive;
-                var result = await _userManager.UpdateAsync(user);
-
-                if (!result.Succeeded)
-                    throw new InvalidOperationException($"Failed to update admin status");
+                _context.Users.Update(user);
+                await _context.SaveChangesAsync();
 
                 _logger.LogInformation($"Admin {adminId} status updated to {isActive}");
                 return true;
@@ -215,13 +229,12 @@ namespace EcommerceAPI.Services
         {
             try
             {
-                var user = await _userManager.FindByIdAsync(id.ToString());
+                var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
                 if (user == null)
                     throw new KeyNotFoundException($"Admin user with ID {id} not found.");
 
-                var result = await _userManager.DeleteAsync(user);
-                if (!result.Succeeded)
-                    throw new InvalidOperationException($"Failed to delete admin user");
+                _context.Users.Remove(user);
+                await _context.SaveChangesAsync();
 
                 _logger.LogInformation($"Admin user {id} deleted");
                 return true;
