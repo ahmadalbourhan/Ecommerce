@@ -2,7 +2,7 @@ namespace EcommerceAPI.Authorization
 {
     /// <summary>
     /// Attribute to protect endpoints with permission-based authorization.
-    /// Usage: [HasPermission("Product.Create")]
+    /// Usage: [HasPermission("Products.Create")]
     /// </summary>
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = true)]
     public class HasPermissionAttribute : Attribute

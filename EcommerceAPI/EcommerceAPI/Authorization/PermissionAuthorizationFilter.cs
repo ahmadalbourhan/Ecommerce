@@ -32,6 +32,14 @@ namespace EcommerceAPI.Authorization
 
             // Check if user is authenticated
             var userIdClaim = context.HttpContext.User.FindFirst(ClaimTypes.NameIdentifier);
+            var userRole = context.HttpContext.User.FindFirst("role")?.Value;
+
+            // SuperAdmin bypasses permission checks
+            if (userRole == "SuperAdmin")
+            {
+                return;
+            }
+
             if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out var userId))
             {
                 _logger.LogWarning("User not authenticated or userId not found in claims");
