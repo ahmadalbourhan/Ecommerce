@@ -1,7 +1,6 @@
 using EcommerceAPI.Models;
 using EcommerceAPI.Services;
-using EcommerceAPI.Authorization;
-using EcommerceAPI.Constants;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EcommerceAPI.Controllers
@@ -23,7 +22,7 @@ namespace EcommerceAPI.Controllers
         /// <returns>List of all permissions</returns>
         /// <response code="200">Returns the list of permissions</response>
         [HttpGet]
-        [HasPermission(Permissions.AdminManagement.Read)]
+        [Authorize]
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<ActionResult<IEnumerable<Permission>>> GetAll()
         {
@@ -39,7 +38,7 @@ namespace EcommerceAPI.Controllers
         /// <response code="200">Returns the permission</response>
         /// <response code="404">Permission not found</response>
         [HttpGet("{id}")]
-        [HasPermission(Permissions.AdminManagement.Read)]
+        [Authorize]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<Permission>> GetById(int id)
@@ -60,7 +59,7 @@ namespace EcommerceAPI.Controllers
         /// <response code="201">Permission created successfully</response>
         /// <response code="400">Invalid permission data</response>
         [HttpPost]
-        [HasPermission(Permissions.AdminManagement.ManagePermissions)]
+        [Authorize]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<Permission>> Create([FromBody] DTOs.CreatePermissionDto permissionDto)
@@ -93,7 +92,7 @@ namespace EcommerceAPI.Controllers
         /// <response code="400">Invalid request</response>
         /// <response code="404">Permission not found</response>
         [HttpPut("{id}")]
-        [HasPermission(Permissions.AdminManagement.ManagePermissions)]
+        [Authorize]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -131,7 +130,7 @@ namespace EcommerceAPI.Controllers
         /// <response code="204">Permission deleted successfully</response>
         /// <response code="404">Permission not found</response>
         [HttpDelete("{id}")]
-        [HasPermission(Permissions.AdminManagement.ManagePermissions)]
+        [Authorize]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Delete(int id)
@@ -149,7 +148,7 @@ namespace EcommerceAPI.Controllers
         /// </summary>
         /// <response code="200">Returns list of all available permission slugs</response>
         [HttpGet("available/all")]
-        [HasPermission(Permissions.AdminManagement.Read)]
+        [Authorize]
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<ActionResult<List<string>>> GetAvailablePermissions()
         {
@@ -163,7 +162,7 @@ namespace EcommerceAPI.Controllers
         /// <param name="userId">The user ID</param>
         /// <response code="200">Returns list of user's permissions</response>
         [HttpGet("users/{userId}")]
-        [HasPermission(Permissions.AdminManagement.Read)]
+        [Authorize]
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<ActionResult<List<string>>> GetUserPermissions(int userId)
         {
@@ -177,7 +176,7 @@ namespace EcommerceAPI.Controllers
         /// <param name="userId">The user ID</param>
         /// <response code="200">Returns list of unassigned permissions</response>
         [HttpGet("users/{userId}/unassigned")]
-        [HasPermission(Permissions.AdminManagement.Read)]
+        [Authorize]
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<ActionResult<List<string>>> GetUnassignedPermissions(int userId)
         {
@@ -194,7 +193,7 @@ namespace EcommerceAPI.Controllers
         /// <response code="400">Invalid request or user is not Admin</response>
         /// <response code="404">User or permission not found</response>
         [HttpPost("users/{userId}/assign")]
-        [HasPermission(Permissions.AdminManagement.ManagePermissions)]
+        [Authorize]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -217,7 +216,7 @@ namespace EcommerceAPI.Controllers
         /// <response code="400">Invalid request</response>
         /// <response code="404">User or permission not found</response>
         [HttpPost("users/{userId}/revoke")]
-        [HasPermission(Permissions.AdminManagement.ManagePermissions)]
+        [Authorize]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]

@@ -186,9 +186,13 @@ namespace EcommerceAPI.Services
             {
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                 new Claim(ClaimTypes.Email, user.Email ?? string.Empty),
-                new Claim(ClaimTypes.Name, user.Name),
-                new Claim("role", userRoles.FirstOrDefault() ?? "User")
+                new Claim(ClaimTypes.Name, user.Name)
             };
+
+            foreach (var role in userRoles.DefaultIfEmpty("User"))
+            {
+                claims.Add(new Claim("role", role));
+            }
 
             // Add permission claims
             foreach (var permission in permissions)

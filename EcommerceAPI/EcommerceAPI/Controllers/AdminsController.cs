@@ -1,5 +1,3 @@
-using EcommerceAPI.Authorization;
-using EcommerceAPI.Constants;
 using EcommerceAPI.DTOs;
 using EcommerceAPI.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -24,7 +22,7 @@ namespace EcommerceAPI.Controllers
         /// Create a new Admin account (SuperAdmin only)
         /// </summary>
         [HttpPost]
-        [HasPermission(Permissions.AdminManagement.Create)]
+        [Authorize]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -53,7 +51,7 @@ namespace EcommerceAPI.Controllers
         /// Get all Admin accounts (SuperAdmin only)
         /// </summary>
         [HttpGet]
-        [HasPermission(Permissions.AdminManagement.Read)]
+        [Authorize]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<ActionResult<List<AdminDetailDto>>> GetAllAdmins()
@@ -75,7 +73,7 @@ namespace EcommerceAPI.Controllers
         /// </summary>
         /// <param name="id">The unique identifier of the admin to retrieve</param>
         [HttpGet("{id}")]
-        [HasPermission(Permissions.AdminManagement.Read)]
+        [Authorize]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -103,7 +101,7 @@ namespace EcommerceAPI.Controllers
         /// <param name="id">The unique identifier of the admin to assign permissions to</param>
         /// <param name="dto">The permissions to assign</param>
         [HttpPost("{id}/permissions")]
-        [HasPermission(Permissions.AdminManagement.ManagePermissions)]
+        [Authorize]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -134,7 +132,7 @@ namespace EcommerceAPI.Controllers
         /// <param name="id">The unique identifier of the admin to revoke permissions from</param>
         /// <param name="dto">The permissions to revoke</param>
         [HttpDelete("{id}/permissions")]
-        [HasPermission(Permissions.AdminManagement.ManagePermissions)]
+        [Authorize]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -163,7 +161,7 @@ namespace EcommerceAPI.Controllers
         /// Update Admin status (activate/deactivate) - SuperAdmin only
         /// </summary>
         [HttpPatch("{id}/status")]
-        [HasPermission(Permissions.AdminManagement.Update)]
+        [Authorize]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -192,7 +190,7 @@ namespace EcommerceAPI.Controllers
         /// Delete an Admin account (SuperAdmin only)
         /// </summary>
         [HttpDelete("{id}")]
-        [HasPermission(Permissions.AdminManagement.Delete)]
+        [Authorize]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]

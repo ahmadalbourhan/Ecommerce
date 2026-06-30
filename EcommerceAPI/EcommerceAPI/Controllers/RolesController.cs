@@ -1,8 +1,7 @@
 using EcommerceAPI.Models;
 using EcommerceAPI.Services;
-using EcommerceAPI.Authorization;
-using EcommerceAPI.Constants;
 using EcommerceAPI.DTOs;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EcommerceAPI.Controllers
@@ -24,7 +23,7 @@ namespace EcommerceAPI.Controllers
         /// <returns>List of all roles</returns>
         /// <response code="200">Returns the list of roles</response>
         [HttpGet]
-        [HasPermission(Permissions.Roles.Read)]
+        [Authorize]
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<ActionResult<IEnumerable<Role>>> GetAll()
         {
@@ -40,7 +39,7 @@ namespace EcommerceAPI.Controllers
         /// <response code="200">Returns the role</response>
         /// <response code="404">Role not found</response>
         [HttpGet("{id}")]
-        [HasPermission(Permissions.Roles.Read)]
+        [Authorize]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<Role>> GetById(int id)
@@ -61,7 +60,7 @@ namespace EcommerceAPI.Controllers
         /// <response code="201">Role created successfully</response>
         /// <response code="400">Invalid role data</response>
         [HttpPost]
-        [HasPermission(Permissions.Roles.Create)]
+        [Authorize]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<Role>> Create([FromBody] CreateRoleDto dto)
@@ -80,7 +79,7 @@ namespace EcommerceAPI.Controllers
         /// <response code="400">Invalid request</response>
         /// <response code="404">Role not found</response>
         [HttpPut("{id}")]
-        [HasPermission(Permissions.Roles.Update)]
+        [Authorize]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -98,7 +97,7 @@ namespace EcommerceAPI.Controllers
         /// <response code="204">Role deleted successfully</response>
         /// <response code="404">Role not found</response>
         [HttpDelete("{id}")]
-        [HasPermission(Permissions.Roles.Delete)]
+        [Authorize]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Delete(int id)
@@ -119,7 +118,7 @@ namespace EcommerceAPI.Controllers
         /// <response code="204">Permission assigned successfully</response>
         /// <response code="400">Invalid request</response>
         [HttpPost("{id}/permissions")]
-        [HasPermission(Permissions.Roles.ManagePermissions)]
+        [Authorize]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> AssignPermission(int id, [FromBody] PermissionAssignmentDto dto)

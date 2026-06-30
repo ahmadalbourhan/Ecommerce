@@ -4,7 +4,6 @@ using EcommerceAPI.Models;
 using EcommerceAPI.Repositories;
 using EcommerceAPI.Services;
 using EcommerceAPI.Seeders;
-using EcommerceAPI.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -44,9 +43,6 @@ builder.Services.AddScoped<IPermissionService, PermissionService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IAdminService, AdminService>();
 
-// Permission-based authorization policies (one policy per permission slug)
-builder.Services.AddPermissionAuthorization();
-
 // JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 var secret = jwtSettings["Secret"] ?? throw new InvalidOperationException("JWT Secret not configured");
@@ -70,7 +66,8 @@ builder.Services.AddAuthentication(options =>
         ValidateAudience = true,
         ValidAudience = jwtSettings["Audience"],
         ValidateLifetime = true,
-        ClockSkew = TimeSpan.Zero
+        ClockSkew = TimeSpan.Zero,
+        RoleClaimType = "role"
     };
 });
 

@@ -176,12 +176,12 @@ Base route: `/api/Permissions`
 
 - **POST** `/api/Permissions/users/{userId}/assign`
   - **Body**: `{ "permissionSlug": "Permission.Assign" }`
-  - **Auth**: Requires `[HasPermission("Permission.Assign")]`
+  - **Auth**: Bearer token required
   - **Returns**: `{ message }`
 
 - **POST** `/api/Permissions/users/{userId}/revoke`
   - **Body**: `{ "permissionSlug": "Permission.Revoke" }`
-  - **Auth**: Requires `[HasPermission("Permission.Revoke")]`
+  - **Auth**: Bearer token required
   - **Returns**: `{ message }`
 
 ---
@@ -190,38 +190,38 @@ Base route: `/api/Permissions`
 
 Base route: `/api/Admins`
 
-All endpoints require Bearer token + permission checks via `[HasPermission(...)]`.
+All endpoints require a Bearer token via `[Authorize]`.
 
 - **POST** `/api/Admins`
   - **Body**: `CreateAdminDto`
-  - **Permission**: `AdminManagement.Create`
+  - **Auth**: Bearer token required
   - **Returns**: `AdminDetailDto` (201)
 
 - **GET** `/api/Admins`
-  - **Permission**: `AdminManagement.Read`
+  - **Auth**: Bearer token required
   - **Returns**: `List<AdminDetailDto>`
 
 - **GET** `/api/Admins/{id}`
-  - **Permission**: `AdminManagement.Read`
+  - **Auth**: Bearer token required
   - **Returns**: `AdminDetailDto`
 
 - **POST** `/api/Admins/{id}/permissions`
   - **Body**: `AssignPermissionsDto` (list of permission slugs)
-  - **Permission**: `AdminManagement.ManagePermissions`
+  - **Auth**: Bearer token required
   - **Returns**: `{ message }`
 
 - **DELETE** `/api/Admins/{id}/permissions`
   - **Body**: `AssignPermissionsDto` (list of permission slugs)
-  - **Permission**: `AdminManagement.ManagePermissions`
+  - **Auth**: Bearer token required
   - **Returns**: `{ message }`
 
 - **PATCH** `/api/Admins/{id}/status`
   - **Body**: `UpdateAdminStatusDto` `{ isActive: boolean }`
-  - **Permission**: `AdminManagement.Update`
+  - **Auth**: Bearer token required
   - **Returns**: `{ message }`
 
 - **DELETE** `/api/Admins/{id}`
-  - **Permission**: `AdminManagement.Delete`
+  - **Auth**: Bearer token required
   - **Returns**: `{ message }`
 
 ---
@@ -230,5 +230,5 @@ All endpoints require Bearer token + permission checks via `[HasPermission(...)]
 
 Base route: `/api/PermissionExample`
 
-This controller is documentation-only and exists to demonstrate the permission attribute usage.
+This controller is documentation-only and exists to demonstrate `[Authorize]` usage.
 

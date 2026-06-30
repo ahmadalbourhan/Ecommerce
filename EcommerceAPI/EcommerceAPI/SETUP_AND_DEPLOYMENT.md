@@ -23,9 +23,6 @@ EcommerceAPI/
 ??? Services/
 ?   ??? IPermissionService.cs (modified) ?
 ?   ??? PermissionService.cs (modified) ?
-??? Authorization/
-?   ??? HasPermissionAttribute.cs ?
-?   ??? PermissionAuthorizationFilter.cs ?
 ??? Seeders/
 ?   ??? DataSeeder.cs ?
 ??? Data/
@@ -131,9 +128,8 @@ You'll need to integrate this with your authentication system. Example flow:
    ```
 
 3. **Test Protected Endpoints**
-   - SuperAdmin should access all endpoints
-   - Admin should access only assigned permissions
-   - Others should get 403 Forbidden
+   - Authenticated users should access endpoints protected with `[Authorize]`
+   - Unauthenticated requests should get 401 Unauthorized
 
 ## Applying to Your Controllers
 
@@ -150,11 +146,10 @@ public async Task<IActionResult> CreateProduct(CreateProductDto dto)
 ### After
 
 ```csharp
-using EcommerceAPI.Constants;      // Add this
-using EcommerceAPI.Authorization;  // Add this
+using Microsoft.AspNetCore.Authorization;  // Add this
 
 [HttpPost("products")]
-[HasPermission(Permissions.Product.Create)]  // Add this line
+[Authorize]  // Add this line
 public async Task<IActionResult> CreateProduct(CreateProductDto dto)
 {
     return Ok(await _productService.CreateAsync(dto));
@@ -205,7 +200,7 @@ public async Task<IActionResult> CreateProduct(CreateProductDto dto)
 
 4. **Protect your endpoints**
    ```csharp
-   [HasPermission(Permissions.Invoice.Create)]
+   [Authorize]
    public async Task<IActionResult> CreateInvoice(CreateInvoiceDto dto) { ... }
    ```
 
@@ -218,7 +213,7 @@ public async Task<IActionResult> CreateProduct(CreateProductDto dto)
 - [ ] DataSeeder runs on startup (check logs)
 - [ ] Default SuperAdmin created with correct credentials
 - [ ] All permission constants defined in `Permissions.cs`
-- [ ] Protected endpoints have `[HasPermission]` attributes
+- [ ] Protected endpoints have `[Authorize]` attributes
 - [ ] Authentication system sets `ClaimTypes.NameIdentifier` claim
 - [ ] SuperAdmin role can assign permissions to Admin users
 - [ ] Admin users can only access permitted endpoints
@@ -294,18 +289,6 @@ await _context.UserPermissions.AddAsync(userPermission);
 await _context.SaveChangesAsync();  // Don't forget this!
 ```
 
-### Issue: Authorization filter not triggering
-
-**Cause**: Filter not registered globally
-
-**Solution**: Verify in Program.cs:
-```csharp
-builder.Services.AddControllers(options =>
-{
-    options.Filters.Add<PermissionAuthorizationFilter>();
-});
-```
-
 ### Issue: Foreign key constraint violations
 
 **Cause**: Trying to assign non-existent permission or user
@@ -360,7 +343,7 @@ If issues arise:
 ## Next Steps
 
 1. ? Complete initial setup (this guide)
-2. ? Apply permission attributes to all endpoints
+2. ? Apply `[Authorize]` attributes to all protected endpoints
 3. ? Create authentication integration
 4. ? Set up admin UI for permission management
 5. ? Add audit logging
