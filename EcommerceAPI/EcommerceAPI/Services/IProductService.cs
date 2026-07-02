@@ -5,6 +5,7 @@ namespace EcommerceAPI.Services
     public interface IProductService
     {
         Task<IEnumerable<Product>> GetAllProductsAsync();
+        Task<IEnumerable<Product>> SearchProductsAsync(string search);
         Task<Product?> GetProductByIdAsync(int id);
         Task<IEnumerable<Product>> GetProductsByUserIdAsync(int userId);
         Task<Product> CreateProductAsync(Product product);

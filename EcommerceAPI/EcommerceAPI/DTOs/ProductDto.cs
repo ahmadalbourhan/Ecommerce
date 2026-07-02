@@ -21,6 +21,7 @@ namespace EcommerceAPI.DTOs
         public string Name { get; set; } = string.Empty;
         public decimal Cost { get; set; }
         public decimal Price { get; set; }
+        public int Stock { get; set; }
         public string Image { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
@@ -46,6 +47,7 @@ namespace EcommerceAPI.DTOs
         public string Name { get; set; } = string.Empty;
         public decimal Cost { get; set; }
         public decimal Price { get; set; }
+        public int Stock { get; set; }
         public string Image { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
@@ -72,6 +74,7 @@ namespace EcommerceAPI.DTOs
     {
         public int Id { get; set; }
         public string Username { get; set; } = string.Empty;
+        public string PhoneNumber { get; set; } = string.Empty;
     }
 
     // DTO used when creating a product
@@ -86,15 +89,17 @@ namespace EcommerceAPI.DTOs
         [Required, Range(0.01, double.MaxValue)]
         public decimal Price { get; set; }
 
+        [Range(0, int.MaxValue)]
+        public int Stock { get; set; }
+
         [Required]
         public int CategoryId { get; set; }
 
         [StringLength(1000)]
         public string? Image { get; set; }
 
-        // Required: user who creates the product
-        [Required, Range(1, int.MaxValue)]
-        public int UserId { get; set; }
+        // Optional for clients; the API resolves the creator from the authenticated token.
+        public int? UserId { get; set; }
     }
 
     // DTO used when updating a product
@@ -112,15 +117,22 @@ namespace EcommerceAPI.DTOs
         [Required, Range(0.01, double.MaxValue)]
         public decimal Price { get; set; }
 
+        [Range(0, int.MaxValue)]
+        public int Stock { get; set; }
+
         [Required]
         public int CategoryId { get; set; }
 
         [StringLength(1000)]
         public string? Image { get; set; }
 
-        // Required: owner of the product
-        [Required, Range(1, int.MaxValue)]
-        public int UserId { get; set; }
+        // Optional for clients; the API resolves the owner from the authenticated token.
+        public int? UserId { get; set; }
+    }
+
+    public class ProductImageUploadDto
+    {
+        public string ImagePath { get; set; } = string.Empty;
     }
 
 }

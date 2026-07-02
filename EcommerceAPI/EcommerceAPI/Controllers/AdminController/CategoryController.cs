@@ -236,6 +236,7 @@ namespace EcommerceAPI.Controllers
                     Id = p.Id,
                     Name = p.Name,
                     Price = p.Price,
+                    Stock = p.Stock,
                     Image = p.Image
                 }).ToList() ?? new List<ProductBasicDto>()
             };

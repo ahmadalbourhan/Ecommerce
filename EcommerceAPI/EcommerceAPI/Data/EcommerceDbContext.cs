@@ -13,6 +13,8 @@ namespace EcommerceAPI.Data
         public DbSet<User> Users { get; set; }
         public DbSet<Role> Roles { get; set; }
         public DbSet<Product> Products { get; set; }
+        public DbSet<Order> Orders { get; set; }
+        public DbSet<OrderItem> OrderItems { get; set; }
         public DbSet<Category> Categories { get; set; }
         public DbSet<UserRole> UserRoles { get; set; }
         public DbSet<Permission> Permissions { get; set; }
@@ -37,6 +39,11 @@ namespace EcommerceAPI.Data
                 entity.Property(e => e.Email)
                     .IsRequired()
                     .HasMaxLength(255);
+
+                entity.Property(e => e.PhoneNumber)
+                    .IsRequired()
+                    .HasMaxLength(50)
+                    .HasDefaultValue("");
 
                 entity.Property(e => e.Username)
                     .IsRequired()
@@ -156,6 +163,10 @@ namespace EcommerceAPI.Data
                 entity.Property(e => e.Price)
                     .HasPrecision(18, 2);
 
+                entity.Property(e => e.Stock)
+                    .IsRequired()
+                    .HasDefaultValue(0);
+
                 entity.Property(e => e.Image)
                     .HasMaxLength(500);
 
@@ -192,6 +203,77 @@ namespace EcommerceAPI.Data
                 entity.ToTable("refresh_token");
                 entity.HasKey(e => e.Id);
                 entity.HasIndex("UserId");
+            });
+
+            // Configure Order entity
+            modelBuilder.Entity<Order>(entity =>
+            {
+                entity.ToTable("order");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.OrderNumber)
+                    .IsRequired()
+                    .HasMaxLength(50);
+
+                entity.Property(e => e.Status)
+                    .IsRequired()
+                    .HasMaxLength(50)
+                    .HasDefaultValue("Pending");
+
+                entity.Property(e => e.Total)
+                    .HasPrecision(18, 2);
+
+                entity.Property(e => e.OrderedAt)
+                    .HasDefaultValueSql("GETUTCDATE()");
+
+                entity.Property(e => e.PaymentMethod)
+                    .IsRequired()
+                    .HasMaxLength(50)
+                    .HasDefaultValue("CashOnDelivery");
+
+                entity.HasIndex(e => e.OrderNumber).IsUnique();
+                entity.HasIndex(e => e.UserId);
+                entity.HasIndex(e => e.Status);
+
+                entity.HasOne(o => o.User)
+                    .WithMany(u => u.Orders)
+                    .HasForeignKey(o => o.UserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // Configure OrderItem entity
+            modelBuilder.Entity<OrderItem>(entity =>
+            {
+                entity.ToTable("order_item");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Quantity)
+                    .IsRequired();
+
+                entity.Property(e => e.UnitPrice)
+                    .HasPrecision(18, 2);
+
+                entity.Property(e => e.TotalPrice)
+                    .HasPrecision(18, 2);
+
+                entity.Property(e => e.CreatedAt)
+                    .HasDefaultValueSql("GETUTCDATE()");
+
+                entity.Property(e => e.UpdatedAt)
+                    .HasDefaultValueSql("GETUTCDATE()");
+
+                entity.HasIndex(e => e.OrderId);
+                entity.HasIndex(e => e.ProductId);
+
+                entity.HasOne(oi => oi.Order)
+                    .WithMany(o => o.OrderItems)
+                    .HasForeignKey(oi => oi.OrderId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(oi => oi.Product)
+                    .WithMany(p => p.OrderItems)
+                    .HasForeignKey(oi => oi.ProductId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
         }
     }

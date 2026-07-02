@@ -21,6 +21,20 @@ namespace EcommerceAPI.Repositories
                 .ToListAsync();
         }
 
+        public async Task<IEnumerable<Product>> SearchAsync(string search)
+        {
+            var normalizedSearch = search.Trim();
+
+            return await _context.Products
+                .Include(p => p.Category)
+                .Include(p => p.User)
+                .Where(p =>
+                    p.Name.Contains(normalizedSearch) ||
+                    (p.Category != null && p.Category.Name.Contains(normalizedSearch)) ||
+                    (p.User != null && p.User.Username.Contains(normalizedSearch)))
+                .ToListAsync();
+        }
+
         public async Task<Product?> GetByIdAsync(int id)
         {
             return await _context.Products
@@ -52,11 +66,26 @@ namespace EcommerceAPI.Repositories
 
         public async Task<Product> UpdateAsync(Product product)
         {
-            _context.Products.Update(product);
+            var existingProduct = _context.Products.Local.FirstOrDefault(p => p.Id == product.Id);
+            if (existingProduct == null)
+            {
+                existingProduct = await _context.Products.FirstOrDefaultAsync(p => p.Id == product.Id);
+            }
+
+            if (existingProduct == null)
+            {
+                throw new KeyNotFoundException($"Product with ID {product.Id} not found");
+            }
+
+            var createdAt = existingProduct.CreatedAt;
+            _context.Entry(existingProduct).CurrentValues.SetValues(product);
+            existingProduct.CreatedAt = createdAt;
+
             await _context.SaveChangesAsync();
 
             // Return updated product with navigation properties loaded
             return await _context.Products
+                .AsNoTracking()
                 .Include(p => p.Category)
                 .Include(p => p.User)
                 .FirstAsync(p => p.Id == product.Id);

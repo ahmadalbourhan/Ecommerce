@@ -12,6 +12,7 @@ namespace EcommerceAPI.Services
     public interface IAuthService
     {
         Task<LoginResponse> LoginAsync(LoginRequest request);
+        Task<LoginResponse> RegisterAsync(RegisterRequest request);
         Task<RefreshTokenResponse> RefreshTokenAsync(string refreshToken);
         Task<bool> LogoutAsync(int userId);
         Task<string> GenerateRefreshTokenAsync();
@@ -43,6 +44,7 @@ namespace EcommerceAPI.Services
                 var user = await _context.Users
                     .Include(u => u.UserRoles)
                     .ThenInclude(ur => ur.Role)
+                    .Include(u => u.RefreshTokens)
                     .FirstOrDefaultAsync(u => u.Email == request.Email);
 
                 if (user == null || !user.IsActive)
@@ -51,7 +53,7 @@ namespace EcommerceAPI.Services
                     throw new UnauthorizedAccessException("Invalid email or password.");
                 }
 
-                var passwordValid = BCrypt.Net.BCrypt.Verify(request.Password, user.Password);
+                var passwordValid = IsPasswordValid(request.Password, user.Password);
                 if (!passwordValid)
                 {
                     _logger.LogWarning($"Invalid password for email: {request.Email}");
@@ -71,8 +73,6 @@ namespace EcommerceAPI.Services
 
                 await _context.SaveChangesAsync();
 
-                var permissions = await _permissionService.GetUserPermissionsAsync(user.Id);
-
                 return new LoginResponse
                 {
                     AccessToken = accessToken,
@@ -84,6 +84,43 @@ namespace EcommerceAPI.Services
                 _logger.LogError(ex, "Login error");
                 throw;
             }
+        }
+
+        public async Task<LoginResponse> RegisterAsync(RegisterRequest request)
+        {
+            if (string.IsNullOrWhiteSpace(request.FullName))
+                throw new InvalidOperationException("Full name is required.");
+
+            if (string.IsNullOrWhiteSpace(request.Email))
+                throw new InvalidOperationException("Email is required.");
+
+            if (string.IsNullOrWhiteSpace(request.PhoneNumber))
+                throw new InvalidOperationException("Phone number is required.");
+
+            if (string.IsNullOrWhiteSpace(request.Password) || request.Password.Length < 6)
+                throw new InvalidOperationException("Password must be at least 6 characters.");
+
+            var email = request.Email.Trim();
+            var phoneNumber = request.PhoneNumber.Trim();
+            var exists = await _context.Users.AnyAsync(u => u.Email == email || u.Username == email);
+            if (exists)
+                throw new InvalidOperationException($"An account with email {email} already exists.");
+
+            var user = new User
+            {
+                Name = request.FullName.Trim(),
+                Email = email,
+                PhoneNumber = phoneNumber,
+                Username = email,
+                Password = BCrypt.Net.BCrypt.HashPassword(request.Password),
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            await _context.Users.AddAsync(user);
+            await _context.SaveChangesAsync();
+
+            return await LoginAsync(new LoginRequest { Email = email, Password = request.Password });
         }
 
         public async Task<RefreshTokenResponse> RefreshTokenAsync(string refreshTokenString)
@@ -101,6 +138,7 @@ namespace EcommerceAPI.Services
                 var user = await _context.Users
                     .Include(u => u.UserRoles)
                     .ThenInclude(ur => ur.Role)
+                    .Include(u => u.RefreshTokens)
                     .FirstOrDefaultAsync(u => u.Id == refreshToken.UserId);
 
                 if (user == null || !user.IsActive)
@@ -179,11 +217,18 @@ namespace EcommerceAPI.Services
             var secretKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["Secret"] ?? string.Empty));
             var credentials = new SigningCredentials(secretKey, SecurityAlgorithms.HmacSha256);
 
-            var userRoles = user.UserRoles.Select(ur => ur.Role.Name).ToList();
+            var userRoles = user.UserRoles
+                .Where(ur => ur.Role != null)
+                .Select(ur => ur.Role.Name)
+                .ToList();
             var permissions = await _permissionService.GetUserPermissionsAsync(user.Id);
 
             var claims = new List<Claim>
             {
+                new Claim("id", user.Id.ToString()),
+                new Claim("email", user.Email ?? string.Empty),
+                new Claim("phoneNumber", user.PhoneNumber ?? string.Empty),
+                new Claim("name", user.Name),
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                 new Claim(ClaimTypes.Email, user.Email ?? string.Empty),
                 new Claim(ClaimTypes.Name, user.Name)
@@ -209,6 +254,22 @@ namespace EcommerceAPI.Services
             );
 
             return new JwtSecurityTokenHandler().WriteToken(token);
+        }
+
+        private bool IsPasswordValid(string password, string passwordHash)
+        {
+            if (string.IsNullOrWhiteSpace(passwordHash))
+                return false;
+
+            try
+            {
+                return BCrypt.Net.BCrypt.Verify(password, passwordHash);
+            }
+            catch (BCrypt.Net.SaltParseException ex)
+            {
+                _logger.LogWarning(ex, "Stored password hash is invalid");
+                return false;
+            }
         }
     }
 }

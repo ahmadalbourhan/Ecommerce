@@ -47,6 +47,31 @@ namespace EcommerceAPI.Controllers
             }
         }
 
+        [HttpPost("register")]
+        [AllowAnonymous]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<LoginResponse>> Register([FromBody] RegisterRequest request)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                    return BadRequest(ModelState);
+
+                var response = await _authService.RegisterAsync(request);
+                return Ok(response);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Register error");
+                return StatusCode(500, new { message = "An error occurred during registration" });
+            }
+        }
+
         /// <summary>
         /// Refresh the access token using a refresh token
         /// </summary>
@@ -87,7 +112,11 @@ namespace EcommerceAPI.Controllers
         {
             try
             {
-                var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+                var userIdClaim =
+                    User.FindFirst("id") ??
+                    User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier) ??
+                    User.FindFirst("nameid") ??
+                    User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub);
                 if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out var userId))
                     return Unauthorized(new { message = "Invalid user" });
 

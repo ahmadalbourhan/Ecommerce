@@ -19,6 +19,16 @@ namespace EcommerceAPI.Services
             return await _productRepository.GetAllAsync();
         }
 
+        public async Task<IEnumerable<Product>> SearchProductsAsync(string search)
+        {
+            if (string.IsNullOrWhiteSpace(search))
+            {
+                return await _productRepository.GetAllAsync();
+            }
+
+            return await _productRepository.SearchAsync(search);
+        }
+
         public async Task<Product?> GetProductByIdAsync(int id)
         {
             if (id <= 0)
@@ -61,6 +71,16 @@ namespace EcommerceAPI.Services
             if (product.Cost < 0)
             {
                 throw new ArgumentException("Product cost cannot be negative", nameof(product.Cost));
+            }
+
+            if (product.Price < product.Cost)
+            {
+                throw new ArgumentException("Product price cannot be less than product cost", nameof(product.Price));
+            }
+
+            if (product.Stock < 0)
+            {
+                throw new ArgumentException("Product stock cannot be negative", nameof(product.Stock));
             }
 
             // Validate category exists
@@ -117,6 +137,16 @@ namespace EcommerceAPI.Services
             if (product.Cost < 0)
             {
                 throw new ArgumentException("Product cost cannot be negative", nameof(product.Cost));
+            }
+
+            if (product.Price < product.Cost)
+            {
+                throw new ArgumentException("Product price cannot be less than product cost", nameof(product.Price));
+            }
+
+            if (product.Stock < 0)
+            {
+                throw new ArgumentException("Product stock cannot be negative", nameof(product.Stock));
             }
 
             // Validate category exists

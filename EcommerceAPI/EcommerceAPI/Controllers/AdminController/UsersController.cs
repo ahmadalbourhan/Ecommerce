@@ -1,5 +1,6 @@
 using EcommerceAPI.Models;
 using EcommerceAPI.Services;
+using EcommerceAPI.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -24,7 +25,7 @@ namespace EcommerceAPI.Controllers
         [HttpGet]
         [Authorize]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<ActionResult<IEnumerable<User>>> GetAll()
+        public async Task<ActionResult<IEnumerable<UserDetailDto>>> GetAll()
         {
             var users = await _userService.GetAllAsync();
             return Ok(users);
@@ -41,7 +42,7 @@ namespace EcommerceAPI.Controllers
         [Authorize]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<User>> GetById(int id)
+        public async Task<ActionResult<UserDetailDto>> GetById(int id)
         {
             var user = await _userService.GetByIdAsync(id);
             if (user == null)
@@ -74,16 +75,20 @@ namespace EcommerceAPI.Controllers
                 return BadRequest(ModelState);
             }
 
+            var name = !string.IsNullOrWhiteSpace(userDto.FullName) ? userDto.FullName! : userDto.Name;
+            var username = !string.IsNullOrWhiteSpace(userDto.Username) ? userDto.Username! : userDto.Email;
+
             var user = new User
             {
-                Name = userDto.Name,
+                Name = name,
                 Email = userDto.Email,
-                Username = userDto.Username,
+                PhoneNumber = userDto.PhoneNumber,
+                Username = username,
                 Password = userDto.Password,
                 IsActive = userDto.IsActive
             };
 
-            var createdUser = await _userService.CreateAsync(user);
+            var createdUser = await _userService.CreateAsync(user, userDto.RoleId);
             return CreatedAtAction(nameof(GetById), new { id = createdUser.Id }, createdUser);
         }
 
@@ -117,18 +122,22 @@ namespace EcommerceAPI.Controllers
                 return BadRequest(ModelState);
             }
 
+            var name = !string.IsNullOrWhiteSpace(userDto.FullName) ? userDto.FullName! : userDto.Name;
+            var username = !string.IsNullOrWhiteSpace(userDto.Username) ? userDto.Username! : userDto.Email;
+
             var user = new User
             {
                 Id = userDto.Id,
-                Name = userDto.Name,
+                Name = name,
                 Email = userDto.Email,
-                Username = userDto.Username,
+                PhoneNumber = userDto.PhoneNumber,
+                Username = username,
                 // Only update password when provided
                 Password = string.IsNullOrWhiteSpace(userDto.Password) ? null ?? string.Empty : userDto.Password,
                 IsActive = userDto.IsActive
             };
 
-            await _userService.UpdateAsync(user);
+            await _userService.UpdateAsync(user, userDto.RoleId);
             return NoContent();
         }
 

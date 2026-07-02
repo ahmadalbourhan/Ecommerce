@@ -69,6 +69,7 @@ namespace EcommerceAPI.Seeders
             const string adminEmail = "superadmin@example.com";
             const string adminUserName = "superadmin";
             const string adminFullName = "Super Administrator";
+            const string adminPhoneNumber = "+10000000000";
             const string adminPassword = "ChangeMe123!";
 
             // Ensure role exists
@@ -101,6 +102,7 @@ namespace EcommerceAPI.Seeders
             {
                 Username = adminUserName,
                 Email = adminEmail,
+                PhoneNumber = adminPhoneNumber,
                 Name = adminFullName,
                 Password = BCrypt.Net.BCrypt.HashPassword(adminPassword),
                 IsActive = true,

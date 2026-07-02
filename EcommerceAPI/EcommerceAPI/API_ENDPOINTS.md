@@ -27,7 +27,8 @@ Base route: `/api/Auth`
 
 - **POST** `/api/Auth/login`
   - **Body**: `LoginRequest` (email + password)
-  - **Returns**: `LoginResponse` `{ accessToken, refreshToken, user { id, email, fullName, role, permissions[] } }`
+  - **Returns**: `LoginResponse` `{ accessToken, refreshToken }`
+  - The access token contains `id`, `email`, `name`, `role`, and `permission` claims.
   - **Auth**: AllowAnonymous
 
 - **POST** `/api/Auth/refresh-token`

@@ -71,7 +71,10 @@ namespace EcommerceAPI.Services
                 .Include(ur => ur.Role)
                 .ToListAsync();
 
-            var roleNames = userRoles.Select(ur => ur.Role.Name).ToList();
+            var roleNames = userRoles
+                .Where(ur => ur.Role != null)
+                .Select(ur => ur.Role.Name)
+                .ToList();
 
             _logger.LogInformation($"User {userId} has {roleNames.Count} role(s): {string.Join(", ", roleNames)}");
 

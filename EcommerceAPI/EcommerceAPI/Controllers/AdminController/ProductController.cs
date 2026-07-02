@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using EcommerceAPI.Models;
 using EcommerceAPI.Services;
 using EcommerceAPI.DTOs;
+using EcommerceAPI.Data;
 using Microsoft.AspNetCore.Authorization;
 
 namespace EcommerceAPI.Controllers
@@ -11,12 +13,20 @@ namespace EcommerceAPI.Controllers
     public class ProductController : ControllerBase
     {
         private readonly IProductService _productService;
+        private readonly EcommerceDbContext _context;
         private readonly ILogger<ProductController> _logger;
+        private readonly IWebHostEnvironment _environment;
 
-        public ProductController(IProductService productService, ILogger<ProductController> logger)
+        public ProductController(
+            IProductService productService,
+            EcommerceDbContext context,
+            ILogger<ProductController> logger,
+            IWebHostEnvironment environment)
         {
             _productService = productService;
+            _context = context;
             _logger = logger;
+            _environment = environment;
         }
 
         /// <summary>
@@ -29,11 +39,13 @@ namespace EcommerceAPI.Controllers
         [Authorize]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<ResponseDto<IEnumerable<ProductWithCategoryDto>>>> GetAll()
+        public async Task<ActionResult<ResponseDto<IEnumerable<ProductWithCategoryDto>>>> GetAll([FromQuery] string? search)
         {
             try
             {
-                var products = await _productService.GetAllProductsAsync();
+                var products = string.IsNullOrWhiteSpace(search)
+                    ? await _productService.GetAllProductsAsync()
+                    : await _productService.SearchProductsAsync(search);
                 var dtos = products.Select(MapToProductWithCategoryDto);
                 return Ok(new ResponseDto<IEnumerable<ProductWithCategoryDto>>(200, "Products retrieved successfully", dtos));
             }
@@ -149,29 +161,16 @@ namespace EcommerceAPI.Controllers
                     Name = productDto.Name,
                     Cost = productDto.Cost,
                     Price = productDto.Price,
+                    Stock = productDto.Stock,
                     CategoryId = productDto.CategoryId,
                     Image = productDto.Image ?? string.Empty,
                 };
 
-                // Resolve user id
-                int resolvedUserId = 0;
-                if (productDto.UserId > 0)
-                {
-                    resolvedUserId = productDto.UserId;
-                }
-                else
-                {
-                    var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
-                        ?? User.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value;
-                    if (!string.IsNullOrEmpty(userIdClaim) && int.TryParse(userIdClaim, out var claimUserId))
-                    {
-                        resolvedUserId = claimUserId;
-                    }
-                }
+                var resolvedUserId = GetCurrentUserId();
 
                 if (resolvedUserId <= 0)
                 {
-                    return BadRequest(new ResponseDto(400, "Valid UserId is required either in payload or token", false));
+                    return BadRequest(new ResponseDto(400, "Could not identify the logged-in user. Please sign in again.", false));
                 }
 
                 product.UserId = resolvedUserId;
@@ -194,6 +193,119 @@ namespace EcommerceAPI.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating product");
+                return StatusCode(500, new ResponseDto(500, "Internal server error", false));
+            }
+        }
+
+        [HttpPost("upload-image")]
+        [Authorize(Roles = "Admin,SuperAdmin")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        public async Task<ActionResult<ResponseDto<ProductImageUploadDto>>> UploadImage(IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+            {
+                return BadRequest(new ResponseDto(400, "Please choose an image to upload.", false));
+            }
+
+            const long maxFileSize = 5 * 1024 * 1024;
+            if (file.Length > maxFileSize)
+            {
+                return BadRequest(new ResponseDto(400, "Image size must be 5 MB or less.", false));
+            }
+
+            var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+            var allowedExtensions = new HashSet<string> { ".jpg", ".jpeg", ".png", ".webp", ".gif" };
+            if (!allowedExtensions.Contains(extension))
+            {
+                return BadRequest(new ResponseDto(400, "Only JPG, PNG, WebP, and GIF images are allowed.", false));
+            }
+
+            var uploadsPath = Path.Combine(_environment.WebRootPath ?? Path.Combine(_environment.ContentRootPath, "wwwroot"), "uploads", "products");
+            Directory.CreateDirectory(uploadsPath);
+
+            var fileName = $"{Guid.NewGuid():N}{extension}";
+            var filePath = Path.Combine(uploadsPath, fileName);
+
+            await using (var stream = System.IO.File.Create(filePath))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            var publicPath = $"/uploads/products/{fileName}";
+            return Ok(new ResponseDto<ProductImageUploadDto>(200, "Image uploaded successfully", new ProductImageUploadDto
+            {
+                ImagePath = publicPath
+            }));
+        }
+
+        [HttpGet("paged")]
+        [Authorize]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult<ResponseDto<PagedResultDto<ProductWithCategoryDto>>>> GetPaged(
+            [FromQuery] string? search,
+            [FromQuery] int? categoryId,
+            [FromQuery] string? sort,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10)
+        {
+            try
+            {
+                page = Math.Max(1, page);
+                pageSize = Math.Clamp(pageSize, 1, 50);
+
+                var query = _context.Products
+                    .AsNoTracking()
+                    .Include(p => p.Category)
+                    .Include(p => p.User)
+                    .AsQueryable();
+
+                if (!string.IsNullOrWhiteSpace(search))
+                {
+                    var normalizedSearch = search.Trim();
+                    query = query.Where(p =>
+                        p.Name.Contains(normalizedSearch) ||
+                        (p.Category != null && p.Category.Name.Contains(normalizedSearch)));
+                }
+
+                var selectedCategoryId = categoryId.GetValueOrDefault();
+                if (selectedCategoryId > 0)
+                {
+                    query = query.Where(p => p.CategoryId == selectedCategoryId);
+                }
+
+                query = (sort ?? string.Empty).Trim().ToLowerInvariant() switch
+                {
+                    "price_asc" => query.OrderBy(p => p.Price).ThenBy(p => p.Name),
+                    "price_desc" => query.OrderByDescending(p => p.Price).ThenBy(p => p.Name),
+                    "stock_asc" => query.OrderBy(p => p.Stock).ThenBy(p => p.Name),
+                    "stock_desc" => query.OrderByDescending(p => p.Stock).ThenBy(p => p.Name),
+                    "recent" => query.OrderByDescending(p => p.CreatedAt).ThenByDescending(p => p.Id),
+                    _ => query.OrderBy(p => p.Name)
+                };
+
+                var totalItems = await query.CountAsync();
+                var products = await query
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync();
+
+                var result = new PagedResultDto<ProductWithCategoryDto>
+                {
+                    Items = products.Select(MapToProductWithCategoryDto).ToList(),
+                    Page = page,
+                    PageSize = pageSize,
+                    TotalItems = totalItems,
+                    TotalPages = totalItems == 0 ? 0 : (int)Math.Ceiling(totalItems / (double)pageSize)
+                };
+
+                return Ok(new ResponseDto<PagedResultDto<ProductWithCategoryDto>>(200, "Products retrieved successfully", result));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving paged products");
                 return StatusCode(500, new ResponseDto(500, "Internal server error", false));
             }
         }
@@ -239,29 +351,16 @@ namespace EcommerceAPI.Controllers
                     Name = productDto.Name,
                     Cost = productDto.Cost,
                     Price = productDto.Price,
+                    Stock = productDto.Stock,
                     CategoryId = productDto.CategoryId,
                     Image = productDto.Image ?? string.Empty
                 };
 
-                // Resolve user id for update
-                int resolvedUserId = 0;
-                if (productDto.UserId > 0)
-                {
-                    resolvedUserId = productDto.UserId;
-                }
-                else
-                {
-                    var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
-                        ?? User.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value;
-                    if (!string.IsNullOrEmpty(userIdClaim) && int.TryParse(userIdClaim, out var claimUserId))
-                    {
-                        resolvedUserId = claimUserId;
-                    }
-                }
+                var resolvedUserId = GetCurrentUserId();
 
                 if (resolvedUserId <= 0)
                 {
-                    return BadRequest(new ResponseDto(400, "Valid UserId is required either in payload or token", false));
+                    return BadRequest(new ResponseDto(400, "Could not identify the logged-in user. Please sign in again.", false));
                 }
 
                 product.UserId = resolvedUserId;
@@ -335,6 +434,11 @@ namespace EcommerceAPI.Controllers
                 if (patch.TryGetProperty("price", out var priceProp) && (priceProp.ValueKind == System.Text.Json.JsonValueKind.Number))
                 {
                     if (priceProp.TryGetDecimal(out var price)) existing.Price = price;
+                }
+
+                if (patch.TryGetProperty("stock", out var stockProp) && stockProp.ValueKind == System.Text.Json.JsonValueKind.Number)
+                {
+                    if (stockProp.TryGetInt32(out var stock)) existing.Stock = stock;
                 }
 
                 if (patch.TryGetProperty("categoryId", out var catProp) && catProp.ValueKind == System.Text.Json.JsonValueKind.Number)
@@ -430,12 +534,25 @@ namespace EcommerceAPI.Controllers
                 Name = p.Name,
                 Cost = p.Cost,
                 Price = p.Price,
+                Stock = p.Stock,
                 Image = p.Image,
                 CreatedAt = p.CreatedAt,
                 UpdatedAt = p.UpdatedAt,
                 Category = p.Category == null ? null : new CategoryBasicDto { Id = p.Category.Id, Name = p.Category.Name },
                 User = p.User == null ? null : new UserBasicDto { Id = p.User.Id, Username = p.User.Username }
             };
+        }
+
+        private int GetCurrentUserId()
+        {
+            var userIdClaim =
+                User.FindFirst("id")?.Value ??
+                User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ??
+                User.FindFirst("nameid")?.Value ??
+                User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value ??
+                User.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value;
+
+            return int.TryParse(userIdClaim, out var userId) ? userId : 0;
         }
     }
 }
