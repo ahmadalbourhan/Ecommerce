@@ -157,6 +157,9 @@ namespace EcommerceAPI.Data
                     .IsRequired()
                     .HasMaxLength(255);
 
+                entity.Property(e => e.Description)
+                    .HasMaxLength(1000);
+
                 entity.Property(e => e.Cost)
                     .HasPrecision(18, 2);
 

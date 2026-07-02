@@ -61,6 +61,11 @@ namespace EcommerceAPI.Services
                 throw new ArgumentException("Product name cannot exceed 255 characters", nameof(product.Name));
             }
 
+            if (!string.IsNullOrWhiteSpace(product.Description) && product.Description.Length > 1000)
+            {
+                throw new ArgumentException("Product description cannot exceed 1000 characters", nameof(product.Description));
+            }
+
             // Validate price
             if (product.Price <= 0)
             {
@@ -125,6 +130,11 @@ namespace EcommerceAPI.Services
             if (product.Name.Length > 255)
             {
                 throw new ArgumentException("Product name cannot exceed 255 characters", nameof(product.Name));
+            }
+
+            if (!string.IsNullOrWhiteSpace(product.Description) && product.Description.Length > 1000)
+            {
+                throw new ArgumentException("Product description cannot exceed 1000 characters", nameof(product.Description));
             }
 
             // Validate price

@@ -30,6 +30,7 @@ namespace EcommerceAPI.Repositories
                 .Include(p => p.User)
                 .Where(p =>
                     p.Name.Contains(normalizedSearch) ||
+                    (p.Description != null && p.Description.Contains(normalizedSearch)) ||
                     (p.Category != null && p.Category.Name.Contains(normalizedSearch)) ||
                     (p.User != null && p.User.Username.Contains(normalizedSearch)))
                 .ToListAsync();

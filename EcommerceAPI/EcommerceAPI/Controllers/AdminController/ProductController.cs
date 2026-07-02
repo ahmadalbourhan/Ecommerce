@@ -159,6 +159,7 @@ namespace EcommerceAPI.Controllers
                 var product = new Product
                 {
                     Name = productDto.Name,
+                    Description = string.IsNullOrWhiteSpace(productDto.Description) ? null : productDto.Description.Trim(),
                     Cost = productDto.Cost,
                     Price = productDto.Price,
                     Stock = productDto.Stock,
@@ -267,6 +268,7 @@ namespace EcommerceAPI.Controllers
                     var normalizedSearch = search.Trim();
                     query = query.Where(p =>
                         p.Name.Contains(normalizedSearch) ||
+                        (p.Description != null && p.Description.Contains(normalizedSearch)) ||
                         (p.Category != null && p.Category.Name.Contains(normalizedSearch)));
                 }
 
@@ -349,6 +351,7 @@ namespace EcommerceAPI.Controllers
                 {
                     Id = productDto.Id,
                     Name = productDto.Name,
+                    Description = string.IsNullOrWhiteSpace(productDto.Description) ? null : productDto.Description.Trim(),
                     Cost = productDto.Cost,
                     Price = productDto.Price,
                     Stock = productDto.Stock,
@@ -424,6 +427,14 @@ namespace EcommerceAPI.Controllers
                 {
                     var name = nameProp.GetString();
                     if (!string.IsNullOrWhiteSpace(name)) existing.Name = name!;
+                }
+
+                if (patch.TryGetProperty("description", out var descriptionProp))
+                {
+                    var description = descriptionProp.ValueKind == System.Text.Json.JsonValueKind.String
+                        ? descriptionProp.GetString()
+                        : null;
+                    existing.Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
                 }
 
                 if (patch.TryGetProperty("cost", out var costProp) && (costProp.ValueKind == System.Text.Json.JsonValueKind.Number))
@@ -532,6 +543,7 @@ namespace EcommerceAPI.Controllers
                 CategoryId = p.CategoryId,
                 UserId = p.UserId,
                 Name = p.Name,
+                Description = p.Description,
                 Cost = p.Cost,
                 Price = p.Price,
                 Stock = p.Stock,

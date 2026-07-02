@@ -19,6 +19,7 @@ namespace EcommerceAPI.DTOs
         /// </summary>
         public int UserId { get; set; }
         public string Name { get; set; } = string.Empty;
+        public string? Description { get; set; }
         public decimal Cost { get; set; }
         public decimal Price { get; set; }
         public int Stock { get; set; }
@@ -45,6 +46,7 @@ namespace EcommerceAPI.DTOs
         /// </summary>
         public int UserId { get; set; }
         public string Name { get; set; } = string.Empty;
+        public string? Description { get; set; }
         public decimal Cost { get; set; }
         public decimal Price { get; set; }
         public int Stock { get; set; }
@@ -83,6 +85,9 @@ namespace EcommerceAPI.DTOs
         [Required, StringLength(200)]
         public string Name { get; set; } = string.Empty;
 
+        [StringLength(1000)]
+        public string? Description { get; set; }
+
         [Required, Range(0, double.MaxValue)]
         public decimal Cost { get; set; }
 
@@ -110,6 +115,9 @@ namespace EcommerceAPI.DTOs
 
         [Required, StringLength(200)]
         public string Name { get; set; } = string.Empty;
+
+        [StringLength(1000)]
+        public string? Description { get; set; }
 
         [Required, Range(0, double.MaxValue)]
         public decimal Cost { get; set; }

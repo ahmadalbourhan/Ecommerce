@@ -70,6 +70,7 @@ namespace EcommerceAPI.Controllers.UserController
                     var normalizedSearch = search.Trim();
                     query = query.Where(p =>
                         p.Name.Contains(normalizedSearch) ||
+                        (p.Description != null && p.Description.Contains(normalizedSearch)) ||
                         (p.Category != null && p.Category.Name.Contains(normalizedSearch)));
                 }
 
@@ -147,6 +148,7 @@ namespace EcommerceAPI.Controllers.UserController
                 CategoryId = product.CategoryId,
                 UserId = product.UserId,
                 Name = product.Name,
+                Description = product.Description,
                 Cost = product.Cost,
                 Price = product.Price,
                 Stock = product.Stock,

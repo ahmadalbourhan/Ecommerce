@@ -187,6 +187,10 @@ namespace EcommerceAPI.Migrations
                         .HasColumnType("datetime2")
                         .HasDefaultValueSql("GETUTCDATE()");
 
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
                     b.Property<string>("Image")
                         .IsRequired()
                         .HasMaxLength(500)
