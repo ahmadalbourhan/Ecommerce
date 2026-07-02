@@ -227,6 +227,58 @@ namespace EcommerceAPI.Migrations
                     b.ToTable("product", (string)null);
                 });
 
+            modelBuilder.Entity("EcommerceAPI.Models.ProductReview", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Comment")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<string>("ImageUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)")
+                        .HasColumnName("image_url");
+
+                    b.Property<int>("OrderId")
+                        .HasColumnType("int")
+                        .HasColumnName("order_id");
+
+                    b.Property<int>("ProductId")
+                        .HasColumnType("int")
+                        .HasColumnName("product_id");
+
+                    b.Property<int>("Rating")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderId");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("ProductId", "UserId", "OrderId")
+                        .IsUnique();
+
+                    b.ToTable("product_review", (string)null);
+                });
+
             modelBuilder.Entity("EcommerceAPI.Models.RefreshToken", b =>
                 {
                     b.Property<int>("Id")
@@ -426,6 +478,33 @@ namespace EcommerceAPI.Migrations
                     b.Navigation("Product");
                 });
 
+            modelBuilder.Entity("EcommerceAPI.Models.ProductReview", b =>
+                {
+                    b.HasOne("EcommerceAPI.Models.Order", "Order")
+                        .WithMany("ProductReviews")
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("EcommerceAPI.Models.Product", "Product")
+                        .WithMany("Reviews")
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EcommerceAPI.Models.User", "User")
+                        .WithMany("ProductReviews")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Order");
+
+                    b.Navigation("Product");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("EcommerceAPI.Models.RefreshToken", b =>
                 {
                     b.HasOne("EcommerceAPI.Models.User", "User")
@@ -509,11 +588,15 @@ namespace EcommerceAPI.Migrations
             modelBuilder.Entity("EcommerceAPI.Models.Order", b =>
                 {
                     b.Navigation("OrderItems");
+
+                    b.Navigation("ProductReviews");
                 });
 
             modelBuilder.Entity("EcommerceAPI.Models.Product", b =>
                 {
                     b.Navigation("OrderItems");
+
+                    b.Navigation("Reviews");
                 });
 
             modelBuilder.Entity("EcommerceAPI.Models.Role", b =>
@@ -525,6 +608,8 @@ namespace EcommerceAPI.Migrations
 
             modelBuilder.Entity("EcommerceAPI.Models.User", b =>
                 {
+                    b.Navigation("ProductReviews");
+
                     b.Navigation("Products");
 
                     b.Navigation("Orders");

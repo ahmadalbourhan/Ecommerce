@@ -18,5 +18,6 @@ namespace EcommerceAPI.Models
         public Category? Category { get; set; }
         public User? User { get; set; }
         public ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
+        public ICollection<ProductReview> Reviews { get; set; } = new List<ProductReview>();
     }
 }

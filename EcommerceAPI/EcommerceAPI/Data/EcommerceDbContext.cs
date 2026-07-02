@@ -13,6 +13,7 @@ namespace EcommerceAPI.Data
         public DbSet<User> Users { get; set; }
         public DbSet<Role> Roles { get; set; }
         public DbSet<Product> Products { get; set; }
+        public DbSet<ProductReview> ProductReviews { get; set; }
         public DbSet<Order> Orders { get; set; }
         public DbSet<OrderItem> OrderItems { get; set; }
         public DbSet<Category> Categories { get; set; }
@@ -206,6 +207,55 @@ namespace EcommerceAPI.Data
                 entity.ToTable("refresh_token");
                 entity.HasKey(e => e.Id);
                 entity.HasIndex("UserId");
+            });
+
+            modelBuilder.Entity<ProductReview>(entity =>
+            {
+                entity.ToTable("product_review");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Rating)
+                    .IsRequired();
+
+                entity.Property(e => e.Comment)
+                    .HasMaxLength(1000);
+
+                entity.Property(e => e.ImageUrl)
+                    .HasColumnName("image_url")
+                    .HasMaxLength(1000);
+
+                entity.Property(e => e.CreatedAt)
+                    .HasColumnName("created_at")
+                    .HasDefaultValueSql("GETUTCDATE()");
+
+                entity.Property(e => e.ProductId)
+                    .HasColumnName("product_id");
+
+                entity.Property(e => e.UserId)
+                    .HasColumnName("user_id");
+
+                entity.Property(e => e.OrderId)
+                    .HasColumnName("order_id");
+
+                entity.HasIndex(e => e.ProductId);
+                entity.HasIndex(e => e.UserId);
+                entity.HasIndex(e => e.OrderId);
+                entity.HasIndex(e => new { e.ProductId, e.UserId, e.OrderId }).IsUnique();
+
+                entity.HasOne(r => r.Product)
+                    .WithMany(p => p.Reviews)
+                    .HasForeignKey(r => r.ProductId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(r => r.User)
+                    .WithMany(u => u.ProductReviews)
+                    .HasForeignKey(r => r.UserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(r => r.Order)
+                    .WithMany(o => o.ProductReviews)
+                    .HasForeignKey(r => r.OrderId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
 
             // Configure Order entity

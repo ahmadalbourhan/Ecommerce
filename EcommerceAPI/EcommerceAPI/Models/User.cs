@@ -20,5 +20,6 @@ namespace EcommerceAPI.Models
         public ICollection<Order> Orders { get; set; } = new List<Order>();
         public ICollection<UserPermission> UserPermissions { get; set; } = new List<UserPermission>();
         public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
+        public ICollection<ProductReview> ProductReviews { get; set; } = new List<ProductReview>();
     }
 }
