@@ -25,9 +25,9 @@ namespace EcommerceAPI.Controllers
         [HttpGet]
         [Authorize]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<ActionResult<IEnumerable<UserDetailDto>>> GetAll()
+        public async Task<ActionResult<IEnumerable<UserDetailDto>>> GetAll([FromQuery] string? search = null)
         {
-            var users = await _userService.GetAllAsync();
+            var users = await _userService.GetAllAsync(search);
             return Ok(users);
         }
 
@@ -153,12 +153,19 @@ namespace EcommerceAPI.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Delete(int id)
         {
-            var result = await _userService.DeleteAsync(id);
-            if (!result)
+            try
             {
-                return NotFound();
+                var result = await _userService.DeleteAsync(id);
+                if (!result)
+                {
+                    return NotFound();
+                }
+                return NoContent();
             }
-            return NoContent();
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
         /// <summary>

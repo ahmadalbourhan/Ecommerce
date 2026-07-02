@@ -48,7 +48,7 @@ namespace EcommerceAPI.Seeders
 
         private async Task SeedRolesAsync()
         {
-            var roles = new[] { "SuperAdmin", "Admin" };
+            var roles = new[] { "SuperAdmin", "user" };
 
             foreach (var roleName in roles)
             {

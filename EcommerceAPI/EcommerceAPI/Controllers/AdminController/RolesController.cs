@@ -102,12 +102,19 @@ namespace EcommerceAPI.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Delete(int id)
         {
-            var result = await _roleService.DeleteAsync(id);
-            if (!result)
+            try
             {
-                return NotFound();
+                var result = await _roleService.DeleteAsync(id);
+                if (!result)
+                {
+                    return NotFound();
+                }
+                return NoContent();
             }
-            return NoContent();
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
         /// <summary>

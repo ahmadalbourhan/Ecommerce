@@ -120,6 +120,21 @@ namespace EcommerceAPI.Services
             await _context.Users.AddAsync(user);
             await _context.SaveChangesAsync();
 
+            var userRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "user");
+            if (userRole == null)
+            {
+                userRole = new Role { Name = "user" };
+                await _context.Roles.AddAsync(userRole);
+                await _context.SaveChangesAsync();
+            }
+
+            await _context.UserRoles.AddAsync(new UserRole
+            {
+                UserId = user.Id,
+                RoleId = userRole.Id
+            });
+            await _context.SaveChangesAsync();
+
             return await LoginAsync(new LoginRequest { Email = email, Password = request.Password });
         }
 
@@ -234,7 +249,7 @@ namespace EcommerceAPI.Services
                 new Claim(ClaimTypes.Name, user.Name)
             };
 
-            foreach (var role in userRoles.DefaultIfEmpty("User"))
+            foreach (var role in userRoles.DefaultIfEmpty("user"))
             {
                 claims.Add(new Claim("role", role));
             }

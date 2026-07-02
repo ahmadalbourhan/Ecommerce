@@ -44,6 +44,9 @@ namespace EcommerceAPI.Services
             if (role == null)
                 return false;
 
+            if (string.Equals(role.Name, "SuperAdmin", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("The Super Admin role cannot be deleted.");
+
             await _roleRepository.DeleteAsync(id);
             await _roleRepository.SaveAsync();
             return true;

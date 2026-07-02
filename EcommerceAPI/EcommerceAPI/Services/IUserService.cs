@@ -5,7 +5,7 @@ namespace EcommerceAPI.Services
 {
     public interface IUserService
     {
-        Task<IEnumerable<UserDetailDto>> GetAllAsync();
+        Task<IEnumerable<UserDetailDto>> GetAllAsync(string? search = null);
         Task<UserDetailDto?> GetByIdAsync(int id);
         Task<UserDetailDto> CreateAsync(User user, int? roleId = null);
         Task<UserDetailDto> UpdateAsync(User user, int? roleId = null);

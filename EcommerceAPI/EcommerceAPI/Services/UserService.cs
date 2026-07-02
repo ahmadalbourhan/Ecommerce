@@ -21,12 +21,25 @@ namespace EcommerceAPI.Services
             _permissionService = permissionService;
         }
 
-        public async Task<IEnumerable<UserDetailDto>> GetAllAsync()
+        public async Task<IEnumerable<UserDetailDto>> GetAllAsync(string? search = null)
         {
-            var users = await _context.Users
+            var query = _context.Users
                 .Include(u => u.UserRoles)
                 .ThenInclude(ur => ur.Role)
-                .ToListAsync();
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim();
+                query = query.Where(u =>
+                    u.Name.Contains(term) ||
+                    u.Email.Contains(term) ||
+                    u.Username.Contains(term) ||
+                    u.PhoneNumber.Contains(term) ||
+                    u.UserRoles.Any(ur => ur.Role != null && ur.Role.Name.Contains(term)));
+            }
+
+            var users = await query.ToListAsync();
 
             var result = new List<UserDetailDto>();
             foreach (var user in users)
@@ -93,9 +106,19 @@ namespace EcommerceAPI.Services
 
         public async Task<bool> DeleteAsync(int id)
         {
-            var user = await _userRepository.GetByIdAsync(id);
+            var user = await _context.Users
+                .Include(u => u.UserRoles)
+                .ThenInclude(ur => ur.Role)
+                .FirstOrDefaultAsync(u => u.Id == id);
+
             if (user == null)
                 return false;
+
+            var isSuperAdmin = user.UserRoles.Any(ur =>
+                string.Equals(ur.Role?.Name, "SuperAdmin", StringComparison.OrdinalIgnoreCase));
+
+            if (isSuperAdmin)
+                throw new InvalidOperationException("The Super Admin account cannot be deleted.");
 
             await _userRepository.DeleteAsync(id);
             await _userRepository.SaveAsync();
