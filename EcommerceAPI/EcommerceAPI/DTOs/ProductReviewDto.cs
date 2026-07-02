@@ -52,4 +52,9 @@ namespace EcommerceAPI.DTOs
         [StringLength(1000)]
         public string? ImageUrl { get; set; }
     }
+
+    public class ProductReviewImageUploadDto
+    {
+        public string ImageUrl { get; set; } = string.Empty;
+    }
 }

@@ -13,11 +13,16 @@ namespace EcommerceAPI.Controllers.UserController
     {
         private readonly EcommerceDbContext _context;
         private readonly ILogger<ProductReviewsController> _logger;
+        private readonly IWebHostEnvironment _environment;
 
-        public ProductReviewsController(EcommerceDbContext context, ILogger<ProductReviewsController> logger)
+        public ProductReviewsController(
+            EcommerceDbContext context,
+            ILogger<ProductReviewsController> logger,
+            IWebHostEnvironment environment)
         {
             _context = context;
             _logger = logger;
+            _environment = environment;
         }
 
         [HttpGet]
@@ -130,6 +135,17 @@ namespace EcommerceAPI.Controllers.UserController
                     return BadRequest(new ResponseDto(400, "Rating must be between 1 and 5.", false));
                 }
 
+                var commentValidation = ValidateComment(dto.Comment);
+                if (commentValidation != null)
+                {
+                    return BadRequest(new ResponseDto(400, commentValidation, false));
+                }
+
+                if (!string.IsNullOrWhiteSpace(dto.ImageUrl) && !dto.ImageUrl.StartsWith("/uploads/review/", StringComparison.OrdinalIgnoreCase))
+                {
+                    return BadRequest(new ResponseDto(400, "Please upload the review image from your device.", false));
+                }
+
                 var userId = GetCurrentUserId();
                 if (userId <= 0)
                 {
@@ -190,6 +206,52 @@ namespace EcommerceAPI.Controllers.UserController
             }
         }
 
+        [HttpPost("upload-image")]
+        [Authorize]
+        public async Task<ActionResult<ResponseDto<ProductReviewImageUploadDto>>> UploadImage(int productId, IFormFile file)
+        {
+            var productExists = await _context.Products.AnyAsync(p => p.Id == productId);
+            if (!productExists)
+            {
+                return NotFound(new ResponseDto(404, $"Product with ID {productId} not found", false));
+            }
+
+            if (file == null || file.Length == 0)
+            {
+                return BadRequest(new ResponseDto(400, "Please choose an image to upload.", false));
+            }
+
+            const long maxFileSize = 5 * 1024 * 1024;
+            if (file.Length > maxFileSize)
+            {
+                return BadRequest(new ResponseDto(400, "Image size must be 5 MB or less.", false));
+            }
+
+            var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+            var allowedExtensions = new HashSet<string> { ".jpg", ".jpeg", ".png", ".webp", ".gif" };
+            if (!allowedExtensions.Contains(extension))
+            {
+                return BadRequest(new ResponseDto(400, "Only JPG, PNG, WebP, and GIF images are allowed.", false));
+            }
+
+            var uploadsPath = Path.Combine(_environment.WebRootPath ?? Path.Combine(_environment.ContentRootPath, "wwwroot"), "uploads", "review");
+            Directory.CreateDirectory(uploadsPath);
+
+            var fileName = $"{Guid.NewGuid():N}{extension}";
+            var filePath = Path.Combine(uploadsPath, fileName);
+
+            await using (var stream = System.IO.File.Create(filePath))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            var publicPath = $"/uploads/review/{fileName}";
+            return Ok(new ResponseDto<ProductReviewImageUploadDto>(200, "Image uploaded successfully", new ProductReviewImageUploadDto
+            {
+                ImageUrl = publicPath
+            }));
+        }
+
         private async Task<ProductReviewEligibilityDto> BuildEligibilityAsync(int productId, int userId)
         {
             var orders = await _context.Orders
@@ -238,6 +300,43 @@ namespace EcommerceAPI.Controllers.UserController
                     PhoneNumber = review.User.PhoneNumber
                 }
             };
+        }
+
+        private static string? ValidateComment(string? comment)
+        {
+            if (string.IsNullOrWhiteSpace(comment)) return null;
+
+            var value = comment.Trim();
+            var lowered = value.ToLowerInvariant();
+            var blockedPatterns = new[]
+            {
+                "<script",
+                "</script",
+                "javascript:",
+                "onerror=",
+                "onload=",
+                "onclick=",
+                "--",
+                ";--",
+                "/*",
+                "*/",
+                "xp_",
+                "drop table",
+                "drop database",
+                "delete from",
+                "insert into",
+                "update ",
+                "select ",
+                "union select",
+                "alter table",
+                "truncate table",
+                "exec ",
+                "execute "
+            };
+
+            return blockedPatterns.Any(pattern => lowered.Contains(pattern))
+                ? "Comment cannot contain JavaScript or SQL commands."
+                : null;
         }
 
         private int GetCurrentUserId()
